@@ -4,13 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Control de Gastos</title>
+  <!-- Incluir Firebase compat (la forma sencilla) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <style>
     /* Global */
     body {
       font-family: Arial, sans-serif;
       margin: 20px;
     }
-    /* Pestañas: cada una ocupa 33.33% y se centra el texto */
+    /* Pestañas */
     #tabContainer {
       display: flex;
       margin-bottom: 10px;
@@ -73,7 +76,7 @@
     #expensesTableCredit colgroup col:nth-child(1) { width: 40%; }
     #expensesTableCredit colgroup col:nth-child(2) { width: 40%; }
     #expensesTableCredit colgroup col:nth-child(3) { width: 20%; }
-    /* Centrar contenido en la columna de Cuotas */
+    /* Centrar la columna de Cuotas */
     #expensesTableCredit td:nth-child(3) {
       text-align: center;
     }
@@ -139,6 +142,17 @@
   </style>
 </head>
 <body>
+  <!-- PROTECCIÓN POR CONTRASEÑA -->
+  <script>
+    var user = prompt("Ingrese usuario:");
+    var pass = prompt("Ingrese contraseña:");
+    if(user !== "Calzolari" || pass !== "ClaraVera2025") {
+      alert("Credenciales incorrectas. Acceso denegado.");
+      document.body.innerHTML = "<h1>Acceso denegado</h1>";
+      throw new Error("Acceso denegado");
+    }
+  </script>
+
   <!-- Pestañas -->
   <div id="tabContainer">
     <span id="tabPrincipal" class="tab active">Principal</span>
@@ -244,15 +258,20 @@
   </div>
 
   <script>
+    // Inicialización de Firebase (usando compat)
+    const firebaseConfig = {
+      apiKey: "AIzaSyCcaWnZquoQuzcaLwPMLL-G8dhhpZ61sGg",
+      authDomain: "contrl-gastos-app.firebaseapp.com",
+      projectId: "contrl-gastos-app",
+      storageBucket: "contrl-gastos-app.firebasestorage.app",
+      messagingSenderId: "544153383458",
+      appId: "1:544153383458:web:ab395573cefcb6b3ed507b",
+      measurementId: "G-1E3KH675HF"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    
     document.addEventListener("DOMContentLoaded", function() {
-      // PROTECCIÓN POR CONTRASEÑA
-      var user = prompt("Ingrese usuario:");
-      var pass = prompt("Ingrese contraseña:");
-      if(user !== "Calzolari" || pass !== "ClaraVera2025") {
-        alert("Credenciales incorrectas. Acceso denegado.");
-        document.body.innerHTML = "<h1>Acceso denegado</h1>";
-        return;
-      }
       
       // Función para formatear números sin decimales y con separador de miles
       function formatNumber(num) {
@@ -341,13 +360,55 @@
       
       let principalData = loadData(keyPrincipal, defaultPrincipal, "expenses");
       let creditData = loadData(keyCredit, defaultCredit, "credit");
-      let otrosData = loadData(keyOtros, defaultOtros, "others");
+      let othersData = loadData(keyOtros, defaultOtros, "others");
       
       let editable = true;
       
       function computeSum(data) {
         return data.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
       }
+      
+      // Función para guardar datos en Firestore
+      function guardarDatosEnFirestore() {
+        db.collection("data").doc("control_gastos").set({
+          principal: principalData,
+          credit: creditData,
+          others: othersData
+        })
+        .then(() => {
+          console.log("Datos guardados en Firestore");
+        })
+        .catch((error) => {
+          console.error("Error al guardar datos: ", error);
+        });
+      }
+      
+      // Función para cargar datos desde Firestore
+      function cargarDatosDesdeFirestore() {
+        db.collection("data").doc("control_gastos").get()
+          .then((doc) => {
+            if (doc.exists) {
+              const data = doc.data();
+              principalData = data.principal || defaultPrincipal;
+              creditData = data.credit || defaultCredit;
+              othersData = data.others || defaultOtros;
+              saveData(keyPrincipal, principalData);
+              saveData(keyCredit, creditData);
+              saveData(keyOtros, othersData);
+              renderPrincipal();
+              renderCredit();
+              renderOthers();
+            } else {
+              console.log("No existe documento en Firestore");
+            }
+          })
+          .catch((error) => {
+            console.error("Error al cargar datos: ", error);
+          });
+      }
+      
+      // Cargar datos desde Firestore al iniciar
+      cargarDatosDesdeFirestore();
       
       // Función para alternar "fixed" en Tarjeta de Crédito
       function toggleFixed(expense, cell) {
@@ -360,9 +421,9 @@
         expense.fixed = !expense.fixed;
         cell.style.backgroundColor = expense.fixed ? "orange" : "";
         saveData(keyCredit, creditData);
+        guardarDatosEnFirestore();
       }
       
-      // Función para edición inline (sin cambios)
       function inlineEditCell(cell, expense, field, index, renderCallback, key, dataArray) {
         if(cell.querySelector("input")) return;
         let currentValue = expense[field].toString();
@@ -382,6 +443,7 @@
               dataArray.splice(index, 1);
               saveData(key, dataArray);
               renderCallback();
+              guardarDatosEnFirestore();
             } else {
               cell.innerHTML = currentValue;
             }
@@ -389,6 +451,7 @@
             expense[field] = (field === "amount") ? parseFloat(newValue) : newValue;
             saveData(key, dataArray);
             renderCallback();
+            guardarDatosEnFirestore();
           }
         });
       }
@@ -411,7 +474,7 @@
         } else if(tab === "Otros") {
           document.getElementById("tabOtros").classList.add("active");
           document.getElementById("screenOtros").classList.add("active");
-          renderOtros();
+          renderOthers();
         }
       }
       
@@ -438,13 +501,13 @@
         let creditKey = `credit_${parts[1]}_${parts[2]}`;
         let othersKey = `others_${parts[1]}_${parts[2]}`;
         creditData = loadData(creditKey, defaultCredit, "credit");
-        otrosData = loadData(othersKey, defaultOtros, "others");
+        othersData = loadData(othersKey, defaultOtros, "others");
         editable = (selectedKey === keyPrincipal);
         renderPrincipal();
       });
       
       // ---------------------------
-      // Para pruebas: si el mes actual es abril (índice 3) y no hay datos para marzo en Tarjeta de Crédito,
+      // Para pruebas: si el mes actual es abril (currentMonth === 3) y no hay datos para marzo en Tarjeta de Crédito,
       // se establece un dato ficticio con valor 1.856.934.
       if(currentMonth === 3 && !localStorage.getItem(`credit_${currentYear}_3`)) {
         const fictitiousMarch = [
@@ -531,6 +594,7 @@
                   principalData.splice(index, 1);
                   saveData(keyPrincipal, principalData);
                   renderPrincipal();
+                  guardarDatosEnFirestore();
                 }
               }, 1000);
             });
@@ -542,6 +606,7 @@
                   principalData.splice(index, 1);
                   saveData(keyPrincipal, principalData);
                   renderPrincipal();
+                  guardarDatosEnFirestore();
                 }
               }, 1000);
             });
@@ -578,6 +643,7 @@
             }
             saveData(keyPrincipal, principalData);
             renderPrincipal();
+            guardarDatosEnFirestore();
           });
           actionsCell.appendChild(payButton);
           row.appendChild(conceptCell);
@@ -590,11 +656,11 @@
         const rowOtros = document.createElement("tr");
         const conceptCellOtros = document.createElement("td");
         conceptCellOtros.textContent = "Otros gastos";
-        const othersTotal = computeSum(otrosData);
+        const othersTotal = computeSum(othersData);
         const amountCellOtros = document.createElement("td");
         amountCellOtros.textContent = "$ " + formatNumber(othersTotal);
         const actionsCellOtros = document.createElement("td");
-        const allOthersPaid = otrosData.length > 0 && otrosData.every(exp => exp.paid);
+        const allOthersPaid = othersData.length > 0 && othersData.every(exp => exp.paid);
         const othersPayButton = document.createElement("button");
         if(allOthersPaid) {
           othersPayButton.innerHTML = "✅";
@@ -608,14 +674,15 @@
         othersPayButton.addEventListener("click", function() {
           if(allOthersPaid) {
             if(confirm("¿Está segura que quiere cambiar a 'no pagado'?")) {
-              otrosData.forEach(exp => exp.paid = false);
+              othersData.forEach(exp => exp.paid = false);
             }
           } else {
-            otrosData.forEach(exp => exp.paid = true);
+            othersData.forEach(exp => exp.paid = true);
           }
-          saveData(keyOtros, otrosData);
+          saveData(keyOtros, othersData);
           renderPrincipal();
-          renderOtros();
+          renderOthers();
+          guardarDatosEnFirestore();
         });
         actionsCellOtros.appendChild(othersPayButton);
         rowOtros.appendChild(conceptCellOtros);
@@ -647,6 +714,7 @@
           conceptInput.value = "";
           amountInput.value = "";
           renderPrincipal();
+          guardarDatosEnFirestore();
         });
       }
       
@@ -664,9 +732,9 @@
             if(!exp.paid) pending += parseFloat(exp.amount);
           }
         });
-        let othersTotal = computeSum(otrosData);
+        let othersTotal = computeSum(othersData);
         total += othersTotal;
-        if(!(otrosData.length > 0 && otrosData.every(exp => exp.paid))) {
+        if(!(othersData.length > 0 && othersData.every(exp => exp.paid))) {
           pending += othersTotal;
         }
         let summaryHTML = `<p>💰 Total a pagar: $${formatNumber(total)}</p>
@@ -688,142 +756,25 @@
             });
             saveData(keyPrincipal, principalData);
             renderPrincipal();
+            guardarDatosEnFirestore();
           });
         }
-      }
-      
-      /* Renderizado de la pestaña Tarjeta de Crédito */
-      function renderCredit() {
-        const tbody = document.querySelector("#expensesTableCredit tbody");
-        tbody.innerHTML = "";
-        creditData.forEach((expense, index) => {
-          const row = document.createElement("tr");
-          // Permitir eliminar con long press
-          if(editable) {
-            row.addEventListener("mousedown", function(e) {
-              this.pressTimer = setTimeout(() => {
-                if(confirm("¿Está segura de eliminar este registro?")) {
-                  creditData.splice(index, 1);
-                  saveData(keyCredit, creditData);
-                  renderCredit();
-                }
-              }, 1000);
-            });
-            row.addEventListener("mouseup", function(e) { clearTimeout(this.pressTimer); });
-            row.addEventListener("mouseleave", function(e) { clearTimeout(this.pressTimer); });
-            row.addEventListener("touchstart", function(e) {
-              this.pressTimer = setTimeout(() => {
-                if(confirm("¿Está segura de eliminar este registro?")) {
-                  creditData.splice(index, 1);
-                  saveData(keyCredit, creditData);
-                  renderCredit();
-                }
-              }, 1000);
-            });
-            row.addEventListener("touchend", function(e) { clearTimeout(this.pressTimer); });
-          }
-          const conceptCell = document.createElement("td");
-          const amountCell = document.createElement("td");
-          const cuotasCell = document.createElement("td");
-          conceptCell.textContent = expense.concept;
-          // Alternar "fixed" al tocar el concepto (salvo si tiene cuotas)
-          conceptCell.addEventListener("click", function() {
-            if(expense.hasOwnProperty("cuotas")) return;
-            toggleFixed(expense, conceptCell);
-          });
-          conceptCell.style.backgroundColor = (expense.fixed === true || expense.hasOwnProperty("cuotas")) ? "orange" : "";
-          // El monto se usa para controlar el pago:
-          amountCell.textContent = "$ " + formatNumber(expense.amount);
-          updateCreditAmountCellStyle(expense, amountCell);
-          amountCell.addEventListener("click", function() {
-            if(expense.paid) {
-              if(!confirm("¿Está segura que quiere desmarcar este pago?")) {
-                return;
-              }
-              expense.paid = false;
-            } else {
-              expense.paid = true;
-            }
-            saveData(keyCredit, creditData);
-            updateCreditAmountCellStyle(expense, amountCell);
-          });
-          cuotasCell.textContent = expense.hasOwnProperty("cuotas") ? expense.cuotas : "";
-          cuotasCell.addEventListener("click", function() {
-            inlineEditCell(cuotasCell, expense, "cuotas", index, renderCredit, keyCredit, creditData);
-          });
-          row.appendChild(conceptCell);
-          row.appendChild(amountCell);
-          row.appendChild(cuotasCell);
-          tbody.appendChild(row);
-        });
-        updateSummaryCredit();
-        const container = document.getElementById("addExpenseContainerCredit");
-        container.innerHTML = `
-          <h3>Agregar gasto de Tarj. de credit.</h3>
-          <input type="text" id="newConceptCredit" class="newConcept" placeholder="Concepto">
-          <input type="number" id="newAmountCredit" class="newAmount" placeholder="Monto">
-          <input type="text" id="newCuotasCredit" class="newCuotas" placeholder="Cuotas (ej: 1/6)">
-          <button id="addExpenseButtonCredit">➕ Agregar</button>
-        `;
-        document.getElementById("addExpenseButtonCredit").addEventListener("click", function(){
-          const conceptInput = document.getElementById("newConceptCredit");
-          const amountInput = document.getElementById("newAmountCredit");
-          const cuotasInput = document.getElementById("newCuotasCredit");
-          const concept = conceptInput.value.trim();
-          const amount = parseFloat(amountInput.value);
-          const cuotas = cuotasInput.value.trim();
-          if(concept === "" || isNaN(amount) || amount < 0) {
-            alert("Ingresa un concepto válido y un monto positivo.");
-            return;
-          }
-          let newExpense = { concept: concept, amount: amount, paid: false };
-          if(cuotas !== "") {
-            newExpense.cuotas = cuotas;
-            newExpense.fixed = true;
-          }
-          creditData.push(newExpense);
-          saveData(keyCredit, creditData);
-          conceptInput.value = "";
-          amountInput.value = "";
-          cuotasInput.value = "";
-          renderCredit();
-          renderPrincipal();
-        });
-      }
-      
-      // Actualizar estilo del recuadro del monto en Tarjeta de Crédito
-      function updateCreditAmountCellStyle(expense, cell) {
-        if(expense.paid) {
-          cell.style.backgroundColor = "#d4f7d4"; // verde clarito
-          if(!cell.innerHTML.includes("✅")) {
-            cell.innerHTML = "$ " + formatNumber(expense.amount) + " ✅";
-          }
-        } else {
-          cell.style.backgroundColor = "";
-          cell.innerHTML = "$ " + formatNumber(expense.amount);
-        }
-      }
-      
-      function updateSummaryCredit() {
-        let total = creditData.length > 0 ? computeSum(creditData) : 0;
-        let summaryHTML = `<p>💰 Total Tarj. de credit: $${formatNumber(total)}</p>`;
-        document.getElementById("summaryBoxCredit").innerHTML = summaryHTML;
-        document.getElementById("summaryBoxCredit").style.backgroundColor = "#e0ffe0";
       }
       
       /* Renderizado de la pestaña Otros gastos */
-      function renderOtros() {
+      function renderOthers() {
         const tbody = document.querySelector("#expensesTableOtros tbody");
         tbody.innerHTML = "";
-        otrosData.forEach((expense, index) => {
+        othersData.forEach((expense, index) => {
           const row = document.createElement("tr");
           if(editable) {
             row.addEventListener("mousedown", function(e) {
               this.pressTimer = setTimeout(() => {
                 if(confirm("¿Está segura de eliminar este registro?")) {
-                  otrosData.splice(index, 1);
-                  saveData(keyOtros, otrosData);
-                  renderOtros();
+                  othersData.splice(index, 1);
+                  saveData(keyOtros, othersData);
+                  renderOthers();
+                  guardarDatosEnFirestore();
                 }
               }, 1000);
             });
@@ -832,9 +783,10 @@
             row.addEventListener("touchstart", function(e) {
               this.pressTimer = setTimeout(() => {
                 if(confirm("¿Está segura de eliminar este registro?")) {
-                  otrosData.splice(index, 1);
-                  saveData(keyOtros, otrosData);
-                  renderOtros();
+                  othersData.splice(index, 1);
+                  saveData(keyOtros, othersData);
+                  renderOthers();
+                  guardarDatosEnFirestore();
                 }
               }, 1000);
             });
@@ -844,17 +796,17 @@
           const amountCell = document.createElement("td");
           conceptCell.textContent = expense.concept;
           conceptCell.addEventListener("click", function() {
-            inlineEditCell(conceptCell, expense, "concept", index, renderOtros, keyOtros, otrosData);
+            inlineEditCell(conceptCell, expense, "concept", index, renderOthers, keyOtros, othersData);
           });
           amountCell.textContent = "$ " + formatNumber(expense.amount);
           amountCell.addEventListener("click", function() {
-            inlineEditCell(amountCell, expense, "amount", index, renderOtros, keyOtros, otrosData);
+            inlineEditCell(amountCell, expense, "amount", index, renderOthers, keyOtros, othersData);
           });
           row.appendChild(conceptCell);
           row.appendChild(amountCell);
           tbody.appendChild(row);
         });
-        updateSummaryOtros();
+        updateSummaryOthers();
         const container = document.getElementById("addExpenseContainerOtros");
         container.innerHTML = `
           <h3>Agregar otro gasto</h3>
@@ -871,19 +823,13 @@
             alert("Ingresa un concepto válido y un monto positivo.");
             return;
           }
-          otrosData.push({ concept: concept, amount: amount, paid: false });
-          saveData(keyOtros, otrosData);
+          othersData.push({ concept: concept, amount: amount, paid: false });
+          saveData(keyOtros, othersData);
           conceptInput.value = "";
           amountInput.value = "";
-          renderOtros();
+          renderOthers();
+          guardarDatosEnFirestore();
         });
-      }
-      
-      function updateSummaryOtros() {
-        let total = otrosData.length > 0 ? computeSum(otrosData) : 0;
-        let summaryHTML = `<p>💰 Total otros gastos: $${formatNumber(total)}</p>`;
-        document.getElementById("summaryBoxOtros").innerHTML = summaryHTML;
-        document.getElementById("summaryBoxOtros").style.backgroundColor = "#e0ffe0";
       }
       
       document.getElementById("addExpenseButtonPrincipal").addEventListener("click", function(){
@@ -900,6 +846,7 @@
         conceptInput.value = "";
         amountInput.value = "";
         renderPrincipal();
+        guardarDatosEnFirestore();
       });
       
       /* Funciones de respaldo: Exportar e Importar */
@@ -907,7 +854,7 @@
         const backupData = {
           principal: principalData,
           credit: creditData,
-          others: otrosData
+          others: othersData
         };
         const jsonStr = JSON.stringify(backupData, null, 2);
         const blob = new Blob([jsonStr], { type: "application/json" });
@@ -930,10 +877,10 @@
               localStorage.setItem(keyOtros, JSON.stringify(data.others));
               principalData = data.principal;
               creditData = data.credit;
-              otrosData = data.others;
+              othersData = data.others;
               renderPrincipal();
               renderCredit();
-              renderOtros();
+              renderOthers();
               alert("Respaldo importado exitosamente.");
             } else {
               alert("El archivo no contiene datos válidos.");
@@ -964,7 +911,7 @@
         exportBackup();
       }
       
-      // Forzar datos ficticios para marzo en Tarjeta de Crédito si es abril (para que se vea 1.856.934)
+      // Forzar datos ficticios para marzo en Tarjeta de Crédito si es abril
       if(currentMonth === 3 && !localStorage.getItem(`credit_${currentYear}_3`)) {
         const fictitiousMarch = [
           { concept: "Gastos Fijos", amount: 1856934, paid: true, fixed: true }
@@ -972,7 +919,7 @@
         localStorage.setItem(`credit_${currentYear}_3`, JSON.stringify(fictitiousMarch));
       }
       
-      // Forzamos la activación de la pestaña Principal al cargar la página
+      // Forzar la activación de la pestaña Principal al cargar la página
       setActiveTab("Principal");
     });
   </script>
