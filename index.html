@@ -4,141 +4,55 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Control de Gastos</title>
-  <!-- Incluir Firebase compat (la forma sencilla) -->
+  <!-- Incluir Firebase compat -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <style>
     /* Global */
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-    }
+    body { font-family: Arial, sans-serif; margin: 20px; }
     /* Pestañas */
-    #tabContainer {
-      display: flex;
-      margin-bottom: 10px;
-    }
-    .tab {
-      flex: 1;
-      padding: 8px 0;
-      text-align: center;
-      cursor: pointer;
-      border: 1px solid #ccc;
-      border-bottom: none;
-      background-color: #f1f1f1;
-      font-size: 0.9em;
-    }
-    .tab.active {
-      background-color: #fff;
-      font-weight: bold;
-    }
+    #tabContainer { display: flex; margin-bottom: 10px; }
+    .tab { flex: 1; padding: 8px 0; text-align: center; cursor: pointer; border: 1px solid #ccc; border-bottom: none; background-color: #f1f1f1; font-size: 0.9em; }
+    .tab.active { background-color: #fff; font-weight: bold; }
     /* Pantallas */
-    .screen {
-      border: 1px solid #ccc;
-      padding: 10px;
-      display: none;
-    }
-    .screen.active {
-      display: block;
-    }
+    .screen { border: 1px solid #ccc; padding: 10px; display: none; }
+    .screen.active { display: block; }
     /* Cabeceras */
-    #headerContainer, #headerContainerCredit, #headerContainerOtros {
-      text-align: left;
-      margin-bottom: 20px;
-    }
-    #title, #titleCredit, #titleOtros {
-      margin: 0;
-      text-decoration: underline;
-      font-size: 1.5em;
-    }
-    #monthInfo, #monthInfoCredit, #monthInfoOtros {
-      margin: 0;
-      font-size: 1.2em;
-    }
+    #headerContainer, #headerContainerCredit, #headerContainerOtros { text-align: left; margin-bottom: 20px; }
+    #title, #titleCredit, #titleOtros { margin: 0; text-decoration: underline; font-size: 1.5em; }
+    #monthInfo, #monthInfoCredit, #monthInfoOtros { margin: 0; font-size: 1.2em; }
     /* Tablas */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     /* Principal: 30% Concepto, 50% Monto, 20% Acciones */
     #expensesTablePrincipal colgroup col:nth-child(1) { width: 30%; }
     #expensesTablePrincipal colgroup col:nth-child(2) { width: 50%; }
     #expensesTablePrincipal colgroup col:nth-child(3) { width: 20%; }
-    th, td {
-      padding: 10px;
-      border: 1px solid #ddd;
-      text-align: left;
-      vertical-align: middle;
-      word-wrap: break-word;
-    }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; vertical-align: middle; word-wrap: break-word; }
     /* Tarjeta de Crédito: 40% Concepto, 40% Monto, 20% Cuotas */
     #expensesTableCredit colgroup col:nth-child(1) { width: 40%; }
     #expensesTableCredit colgroup col:nth-child(2) { width: 40%; }
     #expensesTableCredit colgroup col:nth-child(3) { width: 20%; }
     /* Centrar la columna de Cuotas */
-    #expensesTableCredit td:nth-child(3) {
-      text-align: center;
-    }
+    #expensesTableCredit td:nth-child(3) { text-align: center; }
     /* Botones */
-    .icon-button {
-      border: none;
-      background: none;
-      padding: 0 5px;
-      font-size: 0.65em;
-      cursor: pointer;
-    }
-    .icon-button:disabled {
-      cursor: default;
-    }
-    .pay-icon {
-      font-size: 1.3em; /* Doble del tamaño original */
-      display: block;
-      margin: auto;
-    }
+    .icon-button { border: none; background: none; padding: 0 5px; font-size: 0.65em; cursor: pointer; }
+    .icon-button:disabled { cursor: default; }
+    .pay-icon { font-size: 1.3em; display: block; margin: auto; }
     /* Inputs para edición inline */
-    input[type="text"],
-    input[type="number"] {
-      padding: 5px;
-      font-size: 1em;
-      margin: 2px;
-      width: 100%;
-      box-sizing: border-box;
-    }
+    input[type="text"], input[type="number"] { padding: 5px; font-size: 1em; margin: 2px; width: 100%; box-sizing: border-box; }
     /* Sección para agregar nuevo gasto */
-    .addExpenseContainer {
-      margin-top: 20px;
-      text-align: left;
-    }
-    .addExpenseContainer h3 {
-      margin-bottom: 10px;
-    }
+    .addExpenseContainer { margin-top: 20px; text-align: left; }
+    .addExpenseContainer h3 { margin-bottom: 10px; }
     .newConcept { width: 60%; }
     .newAmount { width: 30%; }
     /* Para Tarjeta de Crédito se añade un campo para cuotas */
     .newCuotas { width: 20%; margin-left: 5px; }
     /* Recuadros resumen */
-    .summaryBox {
-      border: 2px solid #ccc;
-      padding: 10px;
-      margin-top: 20px;
-      border-radius: 5px;
-      text-align: left;
-      font-size: 1.1em;
-    }
-    .summaryBox p {
-      margin: 5px 0;
-    }
+    .summaryBox { border: 2px solid #ccc; padding: 10px; margin-top: 20px; border-radius: 5px; text-align: left; font-size: 1.1em; }
+    .summaryBox p { margin: 5px 0; }
     /* Contenedor para respaldos */
-    .backupContainer {
-      margin-top: 20px;
-    }
-    .export-btn, .import-btn {
-      padding: 5px 10px;
-      font-size: 1em;
-      cursor: pointer;
-      margin-right: 10px;
-    }
+    .backupContainer { margin-top: 20px; }
+    .export-btn, .import-btn { padding: 5px 10px; font-size: 1em; cursor: pointer; margin-right: 10px; }
   </style>
 </head>
 <body>
@@ -258,7 +172,7 @@
   </div>
 
   <script>
-    // Inicialización de Firebase (usando compat)
+    // Inicialización de Firebase (compat)
     const firebaseConfig = {
       apiKey: "AIzaSyCcaWnZquoQuzcaLwPMLL-G8dhhpZ61sGg",
       authDomain: "contrl-gastos-app.firebaseapp.com",
@@ -273,7 +187,6 @@
     
     document.addEventListener("DOMContentLoaded", function() {
       
-      // Función para formatear números sin decimales y con separador de miles
       function formatNumber(num) {
         return new Intl.NumberFormat('es-ES', {
           minimumFractionDigits: 0,
@@ -284,7 +197,7 @@
       /* VARIABLES GLOBALES Y CLAVES */
       const now = new Date();
       const currentYear = now.getFullYear();
-      const currentMonth = now.getMonth(); // 0-indexado
+      const currentMonth = now.getMonth();
       const currentMonthName = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"][currentMonth];
       const keyPrincipal = `expenses_${currentYear}_${currentMonth+1}`;
       const keyCredit = `credit_${currentYear}_${currentMonth+1}`;
@@ -298,15 +211,14 @@
         { concept: "Agua", amount: 25, paid: false },
         { concept: "Internet", amount: 40, paid: false }
       ];
-      const defaultCredit = []; 
-      const defaultOtros = [];  
+      const defaultCredit = [];
+      const defaultOtros = [];
       
       /* FUNCIONES DE ALMACENAMIENTO */
       function loadData(key, defaultData, prefix) {
         const stored = localStorage.getItem(key);
-        if (stored) {
-          return JSON.parse(stored);
-        } else {
+        if (stored) { return JSON.parse(stored); }
+        else {
           if(prefix === "others") {
             localStorage.setItem(key, JSON.stringify([]));
             return [];
@@ -324,11 +236,8 @@
                   if(newItem.hasOwnProperty("cuotas")) {
                     let [currentCuota, totalCuotas] = newItem.cuotas.split("/").map(Number);
                     currentCuota++;
-                    if(currentCuota > totalCuotas) {
-                      return null;
-                    } else {
-                      newItem.cuotas = currentCuota + "/" + totalCuotas;
-                    }
+                    if(currentCuota > totalCuotas) { return null; }
+                    else { newItem.cuotas = currentCuota + "/" + totalCuotas; }
                   }
                   return newItem;
                 })
@@ -338,7 +247,7 @@
             }
             localStorage.setItem(key, JSON.stringify(defaultData));
             return JSON.parse(JSON.stringify(defaultData));
-          } else { // expenses
+          } else {
             let parts = key.split("_");
             let year = parseInt(parts[1]);
             let month = parseInt(parts[2]);
@@ -354,36 +263,25 @@
           }
         }
       }
-      function saveData(key, data) {
-        localStorage.setItem(key, JSON.stringify(data));
-      }
+      function saveData(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
       
       let principalData = loadData(keyPrincipal, defaultPrincipal, "expenses");
       let creditData = loadData(keyCredit, defaultCredit, "credit");
       let othersData = loadData(keyOtros, defaultOtros, "others");
       
       let editable = true;
+      function computeSum(data) { return data.reduce((sum, exp) => sum + parseFloat(exp.amount), 0); }
       
-      function computeSum(data) {
-        return data.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
-      }
-      
-      // Función para guardar datos en Firestore
+      // Guardar y cargar en Firestore
       function guardarDatosEnFirestore() {
         db.collection("data").doc("control_gastos").set({
           principal: principalData,
           credit: creditData,
           others: othersData
         })
-        .then(() => {
-          console.log("Datos guardados en Firestore");
-        })
-        .catch((error) => {
-          console.error("Error al guardar datos: ", error);
-        });
+        .then(() => { console.log("Datos guardados en Firestore"); })
+        .catch((error) => { console.error("Error al guardar datos: ", error); });
       }
-      
-      // Función para cargar datos desde Firestore
       function cargarDatosDesdeFirestore() {
         db.collection("data").doc("control_gastos").get()
           .then((doc) => {
@@ -398,25 +296,17 @@
               renderPrincipal();
               renderCredit();
               renderOthers();
-            } else {
-              console.log("No existe documento en Firestore");
-            }
+            } else { console.log("No existe documento en Firestore"); }
           })
-          .catch((error) => {
-            console.error("Error al cargar datos: ", error);
-          });
+          .catch((error) => { console.error("Error al cargar datos: ", error); });
       }
-      
-      // Cargar datos desde Firestore al iniciar
       cargarDatosDesdeFirestore();
       
-      // Función para alternar "fixed" en Tarjeta de Crédito
+      // Alternar "fixed" en Tarjeta de Crédito
       function toggleFixed(expense, cell) {
         if(expense.hasOwnProperty("cuotas")) return;
         if(expense.fixed === true) {
-          if(!confirm("¿Está segura que quiere desmarcar este gasto fijo?")) {
-            return;
-          }
+          if(!confirm("¿Está segura que quiere desmarcar este gasto fijo?")) { return; }
         }
         expense.fixed = !expense.fixed;
         cell.style.backgroundColor = expense.fixed ? "orange" : "";
@@ -433,9 +323,7 @@
         cell.innerHTML = "";
         cell.appendChild(input);
         input.focus();
-        input.addEventListener("keydown", function(e) {
-          if(e.key === "Enter") { input.blur(); }
-        });
+        input.addEventListener("keydown", function(e) { if(e.key === "Enter") { input.blur(); } });
         input.addEventListener("blur", function() {
           let newValue = input.value.trim();
           if(newValue === "") {
@@ -444,9 +332,7 @@
               saveData(key, dataArray);
               renderCallback();
               guardarDatosEnFirestore();
-            } else {
-              cell.innerHTML = currentValue;
-            }
+            } else { cell.innerHTML = currentValue; }
           } else {
             expense[field] = (field === "amount") ? parseFloat(newValue) : newValue;
             saveData(key, dataArray);
@@ -478,7 +364,7 @@
         }
       }
       
-      /* Configuración del selector de historial (por ahora solo el mes actual) */
+      /* Selector de historial */
       function populateMonthSelect(selectId, keyDefault) {
         const select = document.getElementById(selectId);
         select.innerHTML = "";
@@ -507,8 +393,7 @@
       });
       
       // ---------------------------
-      // Para pruebas: si el mes actual es abril (currentMonth === 3) y no hay datos para marzo en Tarjeta de Crédito,
-      // se establece un dato ficticio con valor 1.856.934.
+      // Datos ficticios para marzo en Tarjeta de Crédito: si es abril y no hay datos, se establece 1.856.934.
       if(currentMonth === 3 && !localStorage.getItem(`credit_${currentYear}_3`)) {
         const fictitiousMarch = [
           { concept: "Gastos Fijos", amount: 1856934, paid: true, fixed: true }
@@ -518,13 +403,10 @@
       // ---------------------------
       
       // ---------------------------
-      // En la pantalla PRINCIPAL, el valor de "Tarjeta de Crédito" se calculará con los datos del mes anterior.
+      // En Principal, la fila "Tarjeta de Crédito" se calcula con los datos del mes anterior.
       function getPrevCreditKey() {
-        if(currentMonth === 0) {
-          return `credit_${currentYear-1}_12`;
-        } else {
-          return `credit_${currentYear}_${currentMonth}`;
-        }
+        if(currentMonth === 0) { return `credit_${currentYear-1}_12`; }
+        else { return `credit_${currentYear}_${currentMonth}`; }
       }
       // ---------------------------
       
@@ -537,18 +419,13 @@
         let creditSum = computeSum(prevCreditData);
         let allCreditPaid = prevCreditData.length > 0 && prevCreditData.every(exp => exp.paid);
         
-        // Separar la fila "Tarjeta de Crédito" del resto
         let creditRow = null;
         let otherRows = [];
         principalData.forEach((expense, index) => {
-          if(expense.concept === "Tarjeta de Crédito") {
-            creditRow = { expense, index };
-          } else {
-            otherRows.push({ expense, index });
-          }
+          if(expense.concept === "Tarjeta de Crédito") { creditRow = { expense, index }; }
+          else { otherRows.push({ expense, index }); }
         });
         
-        // Renderizar la fila "Tarjeta de Crédito" usando la suma del mes anterior
         if(creditRow) {
           const row = document.createElement("tr");
           const conceptCell = document.createElement("td");
@@ -557,23 +434,14 @@
           conceptCell.textContent = creditRow.expense.concept;
           amountCell.textContent = "$ " + formatNumber(creditSum);
           const statusButton = document.createElement("button");
-          if(allCreditPaid) {
-            statusButton.innerHTML = "✅";
-            statusButton.style.color = "#27ae60";
-          } else {
-            statusButton.innerHTML = "💲";
-            statusButton.style.color = "#e74c3c";
-          }
+          if(allCreditPaid) { statusButton.innerHTML = "✅"; statusButton.style.color = "#27ae60"; }
+          else { statusButton.innerHTML = "💲"; statusButton.style.color = "#e74c3c"; }
           statusButton.title = allCreditPaid ? "Pagado (click para revertir)" : "Pagar";
           statusButton.classList.add("icon-button", "pay-icon");
           statusButton.addEventListener("click", function() {
             if(allCreditPaid) {
-              if(confirm("¿Está segura que quiere cambiar a 'no pagado'?")) {
-                prevCreditData.forEach(exp => exp.paid = false);
-              }
-            } else {
-              prevCreditData.forEach(exp => exp.paid = true);
-            }
+              if(confirm("¿Está segura que quiere cambiar a 'no pagado'?")) { prevCreditData.forEach(exp => exp.paid = false); }
+            } else { prevCreditData.forEach(exp => exp.paid = true); }
             localStorage.setItem(prevCreditKey, JSON.stringify(prevCreditData));
             renderPrincipal();
           });
@@ -584,7 +452,6 @@
           tbody.appendChild(row);
         }
         
-        // Renderizar las demás filas de Principal
         otherRows.forEach(({ expense, index }) => {
           const row = document.createElement("tr");
           if(editable) {
@@ -624,23 +491,14 @@
             inlineEditCell(amountCell, expense, "amount", index, renderPrincipal, keyPrincipal, principalData);
           });
           const payButton = document.createElement("button");
-          if(expense.paid) {
-            payButton.innerHTML = "✅";
-            payButton.style.color = "#27ae60";
-          } else {
-            payButton.innerHTML = "💲";
-            payButton.style.color = "#e74c3c";
-          }
+          if(expense.paid) { payButton.innerHTML = "✅"; payButton.style.color = "#27ae60"; }
+          else { payButton.innerHTML = "💲"; payButton.style.color = "#e74c3c"; }
           payButton.title = expense.paid ? "Pagado (click para revertir)" : "Pagar";
           payButton.classList.add("icon-button", "pay-icon");
           payButton.addEventListener("click", function() {
             if(expense.paid) {
-              if(confirm("¿Está segura que quiere cambiar a 'no pagado'?")) {
-                expense.paid = false;
-              }
-            } else {
-              expense.paid = true;
-            }
+              if(confirm("¿Está segura que quiere cambiar a 'no pagado'?")) { expense.paid = false; }
+            } else { expense.paid = true; }
             saveData(keyPrincipal, principalData);
             renderPrincipal();
             guardarDatosEnFirestore();
@@ -652,7 +510,6 @@
           tbody.appendChild(row);
         });
         
-        // Fila fija para "Otros gastos"
         const rowOtros = document.createElement("tr");
         const conceptCellOtros = document.createElement("td");
         conceptCellOtros.textContent = "Otros gastos";
@@ -662,23 +519,14 @@
         const actionsCellOtros = document.createElement("td");
         const allOthersPaid = othersData.length > 0 && othersData.every(exp => exp.paid);
         const othersPayButton = document.createElement("button");
-        if(allOthersPaid) {
-          othersPayButton.innerHTML = "✅";
-          othersPayButton.style.color = "#27ae60";
-        } else {
-          othersPayButton.innerHTML = "💲";
-          othersPayButton.style.color = "#e74c3c";
-        }
+        if(allOthersPaid) { othersPayButton.innerHTML = "✅"; othersPayButton.style.color = "#27ae60"; }
+        else { othersPayButton.innerHTML = "💲"; othersPayButton.style.color = "#e74c3c"; }
         othersPayButton.title = allOthersPaid ? "Pagado (click para revertir)" : "Pagar";
         othersPayButton.classList.add("icon-button", "pay-icon");
         othersPayButton.addEventListener("click", function() {
           if(allOthersPaid) {
-            if(confirm("¿Está segura que quiere cambiar a 'no pagado'?")) {
-              othersData.forEach(exp => exp.paid = false);
-            }
-          } else {
-            othersData.forEach(exp => exp.paid = true);
-          }
+            if(confirm("¿Está segura que quiere cambiar a 'no pagado'?")) { othersData.forEach(exp => exp.paid = false); }
+          } else { othersData.forEach(exp => exp.paid = true); }
           saveData(keyOtros, othersData);
           renderPrincipal();
           renderOthers();
@@ -692,7 +540,6 @@
         
         updateSummaryPrincipal();
         
-        // Formulario para agregar gasto en Principal
         const container = document.getElementById("addExpenseContainerPrincipal");
         container.innerHTML = `
           <h3>Agregar nuevo gasto</h3>
@@ -750,15 +597,113 @@
         if(payAllButton) {
           payAllButton.addEventListener("click", function() {
             principalData.forEach(exp => {
-              if(exp.concept !== "Tarjeta de Crédito") {
-                exp.paid = true;
-              }
+              if(exp.concept !== "Tarjeta de Crédito") { exp.paid = true; }
             });
             saveData(keyPrincipal, principalData);
             renderPrincipal();
             guardarDatosEnFirestore();
           });
         }
+      }
+      
+      /* Renderizado de la pestaña Tarjeta de Crédito */
+      function renderCredit() {
+        const tbody = document.querySelector("#expensesTableCredit tbody");
+        tbody.innerHTML = "";
+        creditData.forEach((expense, index) => {
+          const row = document.createElement("tr");
+          if(editable) {
+            row.addEventListener("mousedown", function(e) {
+              this.pressTimer = setTimeout(() => {
+                if(confirm("¿Está segura de eliminar este registro?")) {
+                  creditData.splice(index, 1);
+                  saveData(keyCredit, creditData);
+                  renderCredit();
+                  guardarDatosEnFirestore();
+                }
+              }, 1000);
+            });
+            row.addEventListener("mouseup", function(e) { clearTimeout(this.pressTimer); });
+            row.addEventListener("mouseleave", function(e) { clearTimeout(this.pressTimer); });
+            row.addEventListener("touchstart", function(e) {
+              this.pressTimer = setTimeout(() => {
+                if(confirm("¿Está segura de eliminar este registro?")) {
+                  creditData.splice(index, 1);
+                  saveData(keyCredit, creditData);
+                  renderCredit();
+                  guardarDatosEnFirestore();
+                }
+              }, 1000);
+            });
+            row.addEventListener("touchend", function(e) { clearTimeout(this.pressTimer); });
+          }
+          const conceptCell = document.createElement("td");
+          const amountCell = document.createElement("td");
+          const cuotasCell = document.createElement("td");
+          conceptCell.textContent = expense.concept;
+          conceptCell.addEventListener("click", function() {
+            if(expense.hasOwnProperty("cuotas")) return;
+            toggleFixed(expense, conceptCell);
+          });
+          conceptCell.style.backgroundColor = (expense.fixed === true || expense.hasOwnProperty("cuotas")) ? "orange" : "";
+          amountCell.textContent = "$ " + formatNumber(expense.amount);
+          updateCreditAmountCellStyle(expense, amountCell);
+          amountCell.addEventListener("click", function() {
+            if(expense.paid) {
+              if(!confirm("¿Está segura que quiere desmarcar este pago?")) { return; }
+              expense.paid = false;
+            } else { expense.paid = true; }
+            saveData(keyCredit, creditData);
+            updateCreditAmountCellStyle(expense, amountCell);
+          });
+          cuotasCell.textContent = expense.hasOwnProperty("cuotas") ? expense.cuotas : "";
+          cuotasCell.addEventListener("click", function() {
+            inlineEditCell(cuotasCell, expense, "cuotas", index, renderCredit, keyCredit, creditData);
+          });
+          row.appendChild(conceptCell);
+          row.appendChild(amountCell);
+          row.appendChild(cuotasCell);
+          tbody.appendChild(row);
+        });
+        updateSummaryCredit();
+        const container = document.getElementById("addExpenseContainerCredit");
+        container.innerHTML = `
+          <h3>Agregar gasto de Tarj. de credit.</h3>
+          <input type="text" id="newConceptCredit" class="newConcept" placeholder="Concepto">
+          <input type="number" id="newAmountCredit" class="newAmount" placeholder="Monto">
+          <input type="text" id="newCuotasCredit" class="newCuotas" placeholder="Cuotas (ej: 1/6)">
+          <button id="addExpenseButtonCredit">➕ Agregar</button>
+        `;
+        document.getElementById("addExpenseButtonCredit").addEventListener("click", function(){
+          console.log("Click agregar Tarj. de credit.");
+          const conceptInput = document.getElementById("newConceptCredit");
+          const amountInput = document.getElementById("newAmountCredit");
+          const cuotasInput = document.getElementById("newCuotasCredit");
+          const concept = conceptInput.value.trim();
+          const amount = parseFloat(amountInput.value);
+          const cuotas = cuotasInput.value.trim();
+          if(concept === "" || isNaN(amount) || amount < 0) {
+            alert("Ingresa un concepto válido y un monto positivo.");
+            return;
+          }
+          let newExpense = { concept: concept, amount: amount, paid: false };
+          if(cuotas !== "") { newExpense.cuotas = cuotas; newExpense.fixed = true; }
+          creditData.push(newExpense);
+          saveData(keyCredit, creditData);
+          conceptInput.value = "";
+          amountInput.value = "";
+          cuotasInput.value = "";
+          renderCredit();
+          renderPrincipal();
+          guardarDatosEnFirestore();
+        });
+      }
+      
+      function updateSummaryCredit() {
+        let total = creditData.length > 0 ? computeSum(creditData) : 0;
+        let summaryHTML = `<p>💰 Total Tarj. de credit: $${formatNumber(total)}</p>`;
+        document.getElementById("summaryBoxCredit").innerHTML = summaryHTML;
+        document.getElementById("summaryBoxCredit").style.backgroundColor = "#e0ffe0";
       }
       
       /* Renderizado de la pestaña Otros gastos */
@@ -837,91 +782,4 @@
         const amountInput = document.getElementById("newAmountPrincipal");
         const concept = conceptInput.value.trim();
         const amount = parseFloat(amountInput.value);
-        if(concept === "" || isNaN(amount) || amount < 0) {
-          alert("Ingresa un concepto válido y un monto positivo.");
-          return;
-        }
-        principalData.push({ concept: concept, amount: amount, paid: false });
-        saveData(keyPrincipal, principalData);
-        conceptInput.value = "";
-        amountInput.value = "";
-        renderPrincipal();
-        guardarDatosEnFirestore();
-      });
-      
-      /* Funciones de respaldo: Exportar e Importar */
-      function exportBackup() {
-        const backupData = {
-          principal: principalData,
-          credit: creditData,
-          others: othersData
-        };
-        const jsonStr = JSON.stringify(backupData, null, 2);
-        const blob = new Blob([jsonStr], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `respaldo_${currentYear}_${currentMonth+1}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-      
-      function importBackup(file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          try {
-            const data = JSON.parse(e.target.result);
-            if(data.principal && data.credit && data.others) {
-              localStorage.setItem(keyPrincipal, JSON.stringify(data.principal));
-              localStorage.setItem(keyCredit, JSON.stringify(data.credit));
-              localStorage.setItem(keyOtros, JSON.stringify(data.others));
-              principalData = data.principal;
-              creditData = data.credit;
-              othersData = data.others;
-              renderPrincipal();
-              renderCredit();
-              renderOthers();
-              alert("Respaldo importado exitosamente.");
-            } else {
-              alert("El archivo no contiene datos válidos.");
-            }
-          } catch (err) {
-            alert("Error al leer el archivo.");
-          }
-        };
-        reader.readAsText(file);
-      }
-      
-      document.getElementById("exportBackupButton").addEventListener("click", function() {
-        exportBackup();
-      });
-      
-      document.getElementById("importBackupButton").addEventListener("click", function() {
-        document.getElementById("backupFileInput").click();
-      });
-      
-      document.getElementById("backupFileInput").addEventListener("change", function(e) {
-        if(e.target.files.length > 0) {
-          importBackup(e.target.files[0]);
-        }
-      });
-      
-      /* Exportación automática el primer día de cada mes */
-      if(new Date().getDate() === 1) {
-        exportBackup();
-      }
-      
-      // Forzar datos ficticios para marzo en Tarjeta de Crédito si es abril
-      if(currentMonth === 3 && !localStorage.getItem(`credit_${currentYear}_3`)) {
-        const fictitiousMarch = [
-          { concept: "Gastos Fijos", amount: 1856934, paid: true, fixed: true }
-        ];
-        localStorage.setItem(`credit_${currentYear}_3`, JSON.stringify(fictitiousMarch));
-      }
-      
-      // Forzar la activación de la pestaña Principal al cargar la página
-      setActiveTab("Principal");
-    });
-  </script>
-</body>
-</html>
+        if(con
