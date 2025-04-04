@@ -10,7 +10,7 @@
       font-family: Arial, sans-serif;
       margin: 20px;
     }
-    /* Pestañas */
+    /* Pestañas: cada una ocupa 33.33% y se centra el texto */
     #tabContainer {
       display: flex;
       margin-bottom: 10px;
@@ -69,11 +69,11 @@
       vertical-align: middle;
       word-wrap: break-word;
     }
-    /* Tarjeta de Crédito: Ajustamos las columnas: 40% Concepto, 40% Monto, 20% Cuotas */
+    /* Tarjeta de Crédito: 40% Concepto, 40% Monto, 20% Cuotas */
     #expensesTableCredit colgroup col:nth-child(1) { width: 40%; }
     #expensesTableCredit colgroup col:nth-child(2) { width: 40%; }
     #expensesTableCredit colgroup col:nth-child(3) { width: 20%; }
-    /* Centrar el contenido de la columna de Cuotas en Tarjeta de Crédito */
+    /* Centrar contenido en la columna de Cuotas */
     #expensesTableCredit td:nth-child(3) {
       text-align: center;
     }
@@ -245,7 +245,15 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", function() {
-
+      // PROTECCIÓN POR CONTRASEÑA
+      var user = prompt("Ingrese usuario:");
+      var pass = prompt("Ingrese contraseña:");
+      if(user !== "Calzolari" || pass !== "ClaraVera2025") {
+        alert("Credenciales incorrectas. Acceso denegado.");
+        document.body.innerHTML = "<h1>Acceso denegado</h1>";
+        return;
+      }
+      
       // Función para formatear números sin decimales y con separador de miles
       function formatNumber(num) {
         return new Intl.NumberFormat('es-ES', {
@@ -354,6 +362,7 @@
         saveData(keyCredit, creditData);
       }
       
+      // Función para edición inline (sin cambios)
       function inlineEditCell(cell, expense, field, index, renderCallback, key, dataArray) {
         if(cell.querySelector("input")) return;
         let currentValue = expense[field].toString();
@@ -435,8 +444,8 @@
       });
       
       // ---------------------------
-      // Para pruebas: si el mes actual es abril y no hay datos para marzo en Tarjeta de Crédito,
-      // establecemos datos ficticios para marzo con valor exacto 1.856.934.
+      // Para pruebas: si el mes actual es abril (índice 3) y no hay datos para marzo en Tarjeta de Crédito,
+      // se establece un dato ficticio con valor 1.856.934.
       if(currentMonth === 3 && !localStorage.getItem(`credit_${currentYear}_3`)) {
         const fictitiousMarch = [
           { concept: "Gastos Fijos", amount: 1856934, paid: true, fixed: true }
@@ -446,7 +455,7 @@
       // ---------------------------
       
       // ---------------------------
-      // En la pantalla PRINCIPAL, el valor de "Tarjeta de Crédito" se calcula usando los datos del mes anterior.
+      // En la pantalla PRINCIPAL, el valor de "Tarjeta de Crédito" se calculará con los datos del mes anterior.
       function getPrevCreditKey() {
         if(currentMonth === 0) {
           return `credit_${currentYear-1}_12`;
@@ -689,7 +698,7 @@
         tbody.innerHTML = "";
         creditData.forEach((expense, index) => {
           const row = document.createElement("tr");
-          // Permitir eliminar con long press en Tarjeta de Crédito
+          // Permitir eliminar con long press
           if(editable) {
             row.addEventListener("mousedown", function(e) {
               this.pressTimer = setTimeout(() => {
@@ -717,17 +726,13 @@
           const amountCell = document.createElement("td");
           const cuotasCell = document.createElement("td");
           conceptCell.textContent = expense.concept;
-          // Al tocar el recuadro del concepto se alterna el flag "fixed" (excepto si tiene cuotas)
+          // Alternar "fixed" al tocar el concepto (salvo si tiene cuotas)
           conceptCell.addEventListener("click", function() {
             if(expense.hasOwnProperty("cuotas")) return;
             toggleFixed(expense, conceptCell);
           });
-          if(expense.fixed === true || expense.hasOwnProperty("cuotas")) {
-            conceptCell.style.backgroundColor = "orange";
-          } else {
-            conceptCell.style.backgroundColor = "";
-          }
-          // MODIFICACIÓN: Al tocar el recuadro del monto se marca o desmarca el pago.
+          conceptCell.style.backgroundColor = (expense.fixed === true || expense.hasOwnProperty("cuotas")) ? "orange" : "";
+          // El monto se usa para controlar el pago:
           amountCell.textContent = "$ " + formatNumber(expense.amount);
           updateCreditAmountCellStyle(expense, amountCell);
           amountCell.addEventListener("click", function() {
@@ -786,7 +791,7 @@
         });
       }
       
-      // Función para actualizar el estilo del recuadro del monto en Tarjeta de Crédito
+      // Actualizar estilo del recuadro del monto en Tarjeta de Crédito
       function updateCreditAmountCellStyle(expense, cell) {
         if(expense.paid) {
           cell.style.backgroundColor = "#d4f7d4"; // verde clarito
@@ -957,6 +962,14 @@
       /* Exportación automática el primer día de cada mes */
       if(new Date().getDate() === 1) {
         exportBackup();
+      }
+      
+      // Forzar datos ficticios para marzo en Tarjeta de Crédito si es abril (para que se vea 1.856.934)
+      if(currentMonth === 3 && !localStorage.getItem(`credit_${currentYear}_3`)) {
+        const fictitiousMarch = [
+          { concept: "Gastos Fijos", amount: 1856934, paid: true, fixed: true }
+        ];
+        localStorage.setItem(`credit_${currentYear}_3`, JSON.stringify(fictitiousMarch));
       }
       
       // Forzamos la activación de la pestaña Principal al cargar la página
