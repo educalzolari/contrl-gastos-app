@@ -62,13 +62,6 @@
     #expensesTablePrincipal colgroup col:nth-child(1) { width: 30%; }
     #expensesTablePrincipal colgroup col:nth-child(2) { width: 50%; }
     #expensesTablePrincipal colgroup col:nth-child(3) { width: 20%; }
-    /* Tarjeta de Crédito: 40% Concepto, 40% Monto, 20% Cuotas */
-    #expensesTableCredit colgroup col:nth-child(1) { width: 40%; }
-    #expensesTableCredit colgroup col:nth-child(2) { width: 40%; }
-    #expensesTableCredit colgroup col:nth-child(3) { width: 20%; }
-    /* Otros gastos: 50% Concepto, 50% Monto */
-    #expensesTableOtros colgroup col:nth-child(1) { width: 50%; }
-    #expensesTableOtros colgroup col:nth-child(2) { width: 50%; }
     th, td {
       padding: 10px;
       border: 1px solid #ddd;
@@ -76,6 +69,10 @@
       vertical-align: middle;
       word-wrap: break-word;
     }
+    /* Tarjeta de Crédito: Ajustamos las columnas: 40% Concepto, 40% Monto, 20% Cuotas */
+    #expensesTableCredit colgroup col:nth-child(1) { width: 40%; }
+    #expensesTableCredit colgroup col:nth-child(2) { width: 40%; }
+    #expensesTableCredit colgroup col:nth-child(3) { width: 20%; }
     /* Centrar el contenido de la columna de Cuotas en Tarjeta de Crédito */
     #expensesTableCredit td:nth-child(3) {
       text-align: center;
@@ -447,15 +444,7 @@
         renderPrincipal();
       });
       
-      // ---------------------------
-      // Datos ficticios para marzo en Tarjeta de Crédito: si es abril y no hay datos para marzo, se inserta 1.856.934.
-      if(currentMonth === 3 && !localStorage.getItem(`credit_${currentYear}_3`)) {
-        const fictitiousMarch = [
-          { concept: "Gastos Fijos", amount: 1856934, paid: true, fixed: true }
-        ];
-        localStorage.setItem(`credit_${currentYear}_3`, JSON.stringify(fictitiousMarch));
-      }
-      // ---------------------------
+      // Se eliminó la inserción de datos ficticios para marzo
       
       // ---------------------------
       // En la pantalla PRINCIPAL, el valor de "Tarjeta de Crédito" se calcula usando los datos del mes anterior.
@@ -735,7 +724,7 @@
         });
       }
       
-      // Función para actualizar el estilo del monto en Tarj. de Crédito
+      // Función para actualizar el estilo del monto en Tarjeta de Crédito
       function updateCreditAmountCellStyle(expense, cell) {
         if(expense.paid) {
           cell.style.backgroundColor = "#d4f7d4"; // verde clarito
@@ -907,14 +896,7 @@
       }
       
       // ---------------------------
-      // Datos ficticios para marzo en Tarjeta de Crédito:
-      // Si es abril y no existen datos para marzo, se inserta 1.856.934.
-      if(currentMonth === 3 && !localStorage.getItem(`credit_${currentYear}_3`)) {
-        const fictitiousMarch = [
-          { concept: "Gastos Fijos", amount: 1856934, paid: true, fixed: true }
-        ];
-        localStorage.setItem(`credit_${currentYear}_3`, JSON.stringify(fictitiousMarch));
-      }
+      // Se eliminó la inserción de datos ficticios para marzo.
       // ---------------------------
       
       // ---------------------------
