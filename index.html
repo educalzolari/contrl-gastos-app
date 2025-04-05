@@ -2,30 +2,128 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gastos Mensuales</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 20px;
+      margin: 10px;
+      padding: 0;
     }
     header {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
+    /* Pestañas */
+    .tab-nav {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .tab-link {
+      padding: 8px 12px;
+      cursor: pointer;
+      background: #f2f2f2;
+      margin: 0 5px;
+      border: none;
+      border-radius: 4px;
+    }
+    .tab-link.active {
+      background: #4CAF50;
+      color: white;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    /* Menú de meses */
+    .month-selector {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    select {
+      font-size: 1em;
+      padding: 5px;
+    }
+    .header-section {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    /* Tablas */
     table {
       width: 100%;
       border-collapse: collapse;
+      margin-bottom: 15px;
     }
     th, td {
       border: 1px solid #ccc;
       padding: 8px;
+      font-size: 0.9em;
       text-align: left;
+      user-select: none;
     }
     th {
-      background-color: #f2f2f2;
+      background: #f2f2f2;
     }
-    .header-section {
-      margin-bottom: 20px;
+    .editable {
+      cursor: pointer;
+    }
+    .pay-icon {
+      cursor: pointer;
+      font-size: 1.5em;
+    }
+    .paid {
+      color: green;
+    }
+    /* En la pestaña Tarjeta: para consumo fijo */
+    .fixed {
+      background-color: #FFDAB9;
+    }
+    .form-section {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 15px;
+    }
+    .form-section input {
+      padding: 6px;
+      font-size: 1em;
+      min-width: 100px;
+    }
+    .add-button {
+      cursor: pointer;
+      font-size: 1.5em;
+      background: none;
+      border: none;
+    }
+    input.editable-cell {
+      width: 100%;
+      padding: 4px;
+      box-sizing: border-box;
+      font-size: inherit;
+      font-family: inherit;
+    }
+    .summary-box {
+      border: 2px solid #4CAF50;
+      background: #e8f5e9;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 1.1em;
+    }
+    .storage-section {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    .storage-button {
+      cursor: pointer;
+      font-size: 1.5em;
+      background: none;
+      border: none;
+      margin: 0 5px;
     }
   </style>
 </head>
@@ -33,18 +131,509 @@
   <header>
     <h1>Gastos Mensuales</h1>
   </header>
-
-  <div class="header-section">
-    <p>Mes en curso: <span id="currentMonth"></span></p>
+  
+  <!-- Pestañas -->
+  <div class="tab-nav">
+    <button class="tab-link active" data-tab="principal">😃 Principal</button>
+    <button class="tab-link" data-tab="tarjeta">💳 Tarjeta de crédito</button>
   </div>
-
-  <table>
-    <thead>
-      <tr>
-        <th>Concepto</th>
-        <th>Monto</th>
-        <th>Pagar</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- Aquí se pueden agregar filas dinámicamente o de
+  
+  <!-- Menú de meses -->
+  <div class="month-selector">
+    <label for="monthSelector">Consultar mes: </label>
+    <select id="monthSelector"></select>
+  </div>
+  
+  <!-- Mes seleccionado -->
+  <div class="header-section">
+    <p>Mes seleccionado: <span id="currentMonthName"></span></p>
+  </div>
+  
+  <!-- Contenido Pestaña Principal -->
+  <div id="tabPrincipal" class="tab-content active">
+    <table>
+      <thead>
+        <tr>
+          <th>Concepto</th>
+          <th>Monto</th>
+          <th>Pagar</th>
+        </tr>
+      </thead>
+      <tbody id="tableBodyPrincipal"></tbody>
+    </table>
+    <div class="form-section">
+      <input type="text" id="conceptInputPrincipal" placeholder="Concepto">
+      <input type="number" id="montoInputPrincipal" placeholder="Monto" step="0.01">
+      <button id="addRowButtonPrincipal" class="add-button">➕</button>
+    </div>
+    <div class="summary-box" id="summaryBoxPrincipal">
+      <p>Total de gastos: 💰 $0.00</p>
+      <p>Restante por pagar: 🏦 $0.00</p>
+    </div>
+  </div>
+  
+  <!-- Contenido Pestaña Tarjeta -->
+  <div id="tabTarjeta" class="tab-content">
+    <div class="header-section">
+      <h2 id="tarjetaTitle">Consumos del mes de ...</h2>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Concepto</th>
+          <th>Monto</th>
+          <th>Cuotas</th>
+        </tr>
+      </thead>
+      <tbody id="tableBodyTarjeta"></tbody>
+    </table>
+    <div class="form-section">
+      <input type="text" id="conceptInputTarjeta" placeholder="Concepto">
+      <input type="number" id="montoInputTarjeta" placeholder="Monto" step="0.01">
+      <input type="text" id="cuotasInputTarjeta" placeholder="Cuotas (ej. 1/6)">
+      <button id="addRowButtonTarjeta" class="add-button">➕</button>
+    </div>
+    <div class="summary-box" id="summaryBoxTarjeta">
+      <p>Total consumos: 💳 $0.00</p>
+    </div>
+  </div>
+  
+  <!-- Exportar / Importar JSON -->
+  <div class="storage-section">
+    <button id="exportButton" class="storage-button">💾 Guardar JSON</button>
+    <button id="importButton" class="storage-button">📂 Cargar JSON</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none">
+  </div>
+  
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      // Variables base y utilidades
+      const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+      const monthSelector = document.getElementById("monthSelector");
+      const currentMonthNameEl = document.getElementById("currentMonthName");
+      const generateMonthOptions = () => {
+        const opts = [];
+        const now = new Date();
+        for (let i = 0; i < 12; i++) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const key = `${d.getFullYear()}-${("0" + (d.getMonth()+1)).slice(-2)}`;
+          const text = `${meses[d.getMonth()]} ${d.getFullYear()}`;
+          opts.push({ key, text });
+        }
+        return opts;
+      };
+      const monthOptions = generateMonthOptions();
+      monthOptions.forEach(opt => {
+        const option = document.createElement("option");
+        option.value = opt.key;
+        option.textContent = opt.text;
+        monthSelector.appendChild(option);
+      });
+      monthSelector.selectedIndex = 0;
+      currentMonthNameEl.textContent = monthOptions[0].text;
+      
+      // Variables para meses activos en cada pestaña (para copiar datos al cambiar mes)
+      let activeMonthPrincipal = monthSelector.value;
+      let activeMonthTarjeta = monthSelector.value;
+      
+      // Función para obtener la clave del mes anterior (formato "YYYY-MM")
+      const getPreviousMonthKey = (currentKey) => {
+        let [year, month] = currentKey.split("-").map(Number);
+        month--;
+        if (month < 1) { month = 12; year--; }
+        return `${year}-${("0" + month).slice(-2)}`;
+      };
+      
+      // Función para obtener el total de consumos de la tarjeta del mes anterior
+      const getTarjetaConsumoFromPreviousMonth = () => {
+        const currentKey = monthSelector.value;
+        const prevKey = getPreviousMonthKey(currentKey);
+        const allTarjeta = JSON.parse(localStorage.getItem("tarjetaCredito")) || {};
+        const prevData = allTarjeta[prevKey] || [];
+        return prevData.reduce((sum, item) => sum + (parseFloat(item.monto.replace('$','')) || 0), 0);
+      };
+      
+      // SISTEMA DE PESTAÑAS
+      const tabLinks = document.querySelectorAll(".tab-link");
+      const tabContents = document.querySelectorAll(".tab-content");
+      tabLinks.forEach(link => {
+        link.addEventListener("click", function() {
+          tabLinks.forEach(btn => btn.classList.remove("active"));
+          tabContents.forEach(cont => cont.classList.remove("active"));
+          this.classList.add("active");
+          document.getElementById("tab" + this.getAttribute("data-tab").charAt(0).toUpperCase() + this.getAttribute("data-tab").slice(1)).classList.add("active");
+          updateTarjetaTitle();
+        });
+      });
+      
+      // --- Pestaña Principal ---
+      const tableBodyPrincipal = document.getElementById("tableBodyPrincipal");
+      const summaryBoxPrincipal = document.getElementById("summaryBoxPrincipal");
+      
+      const getAllDataPrincipal = () => {
+        return JSON.parse(localStorage.getItem("gastosMensuales")) || {};
+      };
+      
+      const saveDataForMonthPrincipal = (monthKey, data) => {
+        const all = getAllDataPrincipal();
+        all[monthKey] = data;
+        localStorage.setItem("gastosMensuales", JSON.stringify(all));
+      };
+      
+      const saveDataToLocalStoragePrincipal = () => {
+        const currentKey = monthSelector.value;
+        const data = [];
+        tableBodyPrincipal.querySelectorAll("tr").forEach(row => {
+          if (row.getAttribute("data-special") === "true") return;
+          const cells = row.querySelectorAll("td");
+          if (cells.length >= 3) {
+            data.push({
+              concepto: cells[0].textContent,
+              monto: cells[1].textContent,
+              pagado: cells[2].querySelector(".pay-icon").getAttribute("data-paid") === "true"
+            });
+          }
+        });
+        // Insertar siempre la entrada fija "Tarj. de crédito"
+        const prevConsumo = getTarjetaConsumoFromPreviousMonth();
+        data.unshift({ concepto: "Tarj. de crédito", monto: "$" + prevConsumo.toFixed(2), pagado: false });
+        saveDataForMonthPrincipal(currentKey, data);
+        updateSummaryPrincipal();
+      };
+      
+      const updateSummaryPrincipal = () => {
+        let total = 0, restante = 0;
+        tableBodyPrincipal.querySelectorAll("tr").forEach(row => {
+          const cells = row.querySelectorAll("td");
+          if (cells.length >= 3) {
+            const m = parseFloat(cells[1].textContent.replace('$','')) || 0;
+            total += m;
+            const pagado = cells[2].querySelector(".pay-icon").getAttribute("data-paid") === "true";
+            if (!pagado) restante += m;
+          }
+        });
+        summaryBoxPrincipal.innerHTML = `<p>Total de gastos: 💰 $${total.toFixed(2)}</p><p>Restante por pagar: 🏦 $${restante.toFixed(2)}</p>`;
+      };
+      
+      const createRowPrincipal = (data) => {
+        const row = document.createElement("tr");
+        if (data.concepto === "Tarj. de crédito") {
+          row.setAttribute("data-special", "true");
+        }
+        const cCell = document.createElement("td");
+        cCell.textContent = data.concepto;
+        if (!row.hasAttribute("data-special")) cCell.classList.add("editable");
+        const mCell = document.createElement("td");
+        mCell.textContent = data.monto;
+        if (!row.hasAttribute("data-special")) mCell.classList.add("editable");
+        const pCell = document.createElement("td");
+        const pay = document.createElement("span");
+        pay.className = "pay-icon";
+        pay.setAttribute("data-paid", data.pagado ? "true" : "false");
+        pay.textContent = data.pagado ? "✅" : "💸";
+        if(data.pagado) pay.classList.add("paid");
+        pCell.appendChild(pay);
+        
+        row.appendChild(cCell);
+        row.appendChild(mCell);
+        row.appendChild(pCell);
+        
+        addPayIconListener(pay, saveDataToLocalStoragePrincipal);
+        if (!row.hasAttribute("data-special")) {
+          addRowListeners(row, saveDataToLocalStoragePrincipal);
+        }
+        return row;
+      };
+      
+      const loadDataFromLocalStoragePrincipal = () => {
+        tableBodyPrincipal.innerHTML = "";
+        const currentKey = monthSelector.value;
+        const all = getAllDataPrincipal();
+        let data = all[currentKey] || [];
+        // Asegurarse de que exista la entrada fija
+        if (!data.find(item => item.concepto === "Tarj. de crédito")) {
+          const prevConsumo = getTarjetaConsumoFromPreviousMonth();
+          data.unshift({ concepto: "Tarj. de crédito", monto: "$" + prevConsumo.toFixed(2), pagado: false });
+        }
+        data.forEach(item => {
+          const row = createRowPrincipal(item);
+          tableBodyPrincipal.appendChild(row);
+        });
+        updateSummaryPrincipal();
+      };
+      
+      // --- Pestaña Tarjeta de crédito ---
+      const tableBodyTarjeta = document.getElementById("tableBodyTarjeta");
+      const summaryBoxTarjeta = document.getElementById("summaryBoxTarjeta");
+      const tarjetaTitle = document.getElementById("tarjetaTitle");
+      
+      const getAllDataTarjeta = () => {
+        return JSON.parse(localStorage.getItem("tarjetaCredito")) || {};
+      };
+      
+      const saveDataForMonthTarjeta = (monthKey, data) => {
+        const all = getAllDataTarjeta();
+        all[monthKey] = data;
+        localStorage.setItem("tarjetaCredito", JSON.stringify(all));
+      };
+      
+      const saveDataToLocalStorageTarjeta = () => {
+        const currentKey = monthSelector.value;
+        const data = [];
+        tableBodyTarjeta.querySelectorAll("tr").forEach(row => {
+          const cells = row.querySelectorAll("td");
+          if (cells.length >= 3) {
+            data.push({
+              concepto: cells[0].textContent,
+              monto: cells[1].textContent,
+              cuotas: cells[2].textContent,
+              fijo: cells[0].classList.contains("fixed")
+            });
+          }
+        });
+        saveDataForMonthTarjeta(currentKey, data);
+        updateSummaryTarjeta();
+      };
+      
+      const updateSummaryTarjeta = () => {
+        let total = 0;
+        tableBodyTarjeta.querySelectorAll("tr").forEach(row => {
+          const cells = row.querySelectorAll("td");
+          if(cells.length >= 3) {
+            total += parseFloat(cells[1].textContent.replace('$','')) || 0;
+          }
+        });
+        summaryBoxTarjeta.innerHTML = `<p>Total consumos: 💳 $${total.toFixed(2)}</p>`;
+      };
+      
+      // En Tarjeta, al tocar el concepto se alterna la clase "fixed" para marcar consumo fijo
+      const createRowTarjeta = (data) => {
+        const row = document.createElement("tr");
+        const cCell = document.createElement("td");
+        cCell.textContent = data.concepto;
+        if (data.fijo) cCell.classList.add("fixed");
+        cCell.addEventListener("click", function(e) {
+          e.stopPropagation();
+          this.classList.toggle("fixed");
+          saveDataToLocalStorageTarjeta();
+        });
+        const mCell = document.createElement("td");
+        mCell.textContent = data.monto;
+        const cuotasCell = document.createElement("td");
+        cuotasCell.textContent = data.cuotas || "";
+        
+        row.appendChild(cCell);
+        row.appendChild(mCell);
+        row.appendChild(cuotasCell);
+        
+        addEditableListener(cCell, saveDataToLocalStorageTarjeta);
+        addEditableListener(mCell, saveDataToLocalStorageTarjeta);
+        addEditableListener(cuotasCell, saveDataToLocalStorageTarjeta);
+        addRowDeletionListener(row, saveDataToLocalStorageTarjeta);
+        return row;
+      };
+      
+      const loadDataFromLocalStorageTarjeta = () => {
+        tableBodyTarjeta.innerHTML = "";
+        const currentKey = monthSelector.value;
+        const all = getAllDataTarjeta();
+        let data = all[currentKey] || [];
+        if (data.length === 0) {
+          data.push({ concepto: "Ejemplo consumo", monto: "$0.00", cuotas: "", fijo: false });
+        }
+        data.forEach(item => {
+          const row = createRowTarjeta(item);
+          tableBodyTarjeta.appendChild(row);
+        });
+        updateSummaryTarjeta();
+      };
+      
+      const updateTarjetaTitle = () => {
+        const selected = monthSelector.options[monthSelector.selectedIndex];
+        tarjetaTitle.textContent = `Consumos del mes de ${selected.textContent}`;
+      };
+      
+      // Al cambiar de mes:
+      // Principal: copiar todos los datos (reiniciando pagos) y actualizar la entrada fija con el total del mes anterior.
+      // Tarjeta: copiar solo consumos con cuotas o marcados como fijos. Para consumos con cuotas, incrementar N en "N/M" y eliminar si N > M.
+      monthSelector.addEventListener("change", function() {
+        const newKey = monthSelector.value;
+  
+        // Pestaña Principal
+        const allPrincipal = getAllDataPrincipal();
+        if (!allPrincipal[newKey] || allPrincipal[newKey].length === 0) {
+          let source = [];
+          if (allPrincipal[activeMonthPrincipal] && allPrincipal[activeMonthPrincipal].length > 0) {
+            source = allPrincipal[activeMonthPrincipal].map(item => ({
+              concepto: item.concepto,
+              monto: item.monto,
+              pagado: false
+            }));
+          } else {
+            source = [{ concepto: "Tarj. de crédito", monto: "$0.00", pagado: false }];
+          }
+          saveDataForMonthPrincipal(newKey, source);
+        }
+        activeMonthPrincipal = newKey;
+  
+        // Pestaña Tarjeta
+        const allTarjeta = getAllDataTarjeta();
+        if (!allTarjeta[newKey] || allTarjeta[newKey].length === 0) {
+          let sourceT = [];
+          if (allTarjeta[activeMonthTarjeta] && allTarjeta[activeMonthTarjeta].length > 0) {
+            sourceT = allTarjeta[activeMonthTarjeta].map(item => {
+              if (item.cuotas && item.cuotas.includes("/")) {
+                let [n, total] = item.cuotas.split("/").map(Number);
+                // Si se incrementa y queda <= total, se copia; si al incrementar N > total, se elimina
+                if (n < total) {
+                  return { ...item, cuotas: (n + 1) + "/" + total };
+                } else {
+                  return null;
+                }
+              } else {
+                // Si no tiene cuotas, se copia solo si es fijo
+                return item.fijo ? item : null;
+              }
+            }).filter(i => i !== null);
+          } else {
+            sourceT = [{ concepto: "Ejemplo consumo", monto: "$0.00", cuotas: "", fijo: false }];
+          }
+          allTarjeta[newKey] = sourceT;
+          localStorage.setItem("tarjetaCredito", JSON.stringify(allTarjeta));
+        }
+        activeMonthTarjeta = newKey;
+  
+        currentMonthNameEl.textContent = monthSelector.options[monthSelector.selectedIndex].textContent;
+        updateTarjetaTitle();
+        loadDataFromLocalStoragePrincipal();
+        loadDataFromLocalStorageTarjeta();
+      });
+      
+      // Botones para agregar entradas
+      document.getElementById("addRowButtonPrincipal").addEventListener("click", function() {
+        const c = document.getElementById("conceptInputPrincipal").value.trim();
+        const m = document.getElementById("montoInputPrincipal").value.trim();
+        if (!c || !m || c === "Tarj. de crédito") {
+          alert("Ingrese Concepto y Monto (diferente de 'Tarj. de crédito').");
+          return;
+        }
+        const newData = { concepto: c, monto: "$" + parseFloat(m).toFixed(2), pagado: false };
+        const row = createRowPrincipal(newData);
+        tableBodyPrincipal.appendChild(row);
+        document.getElementById("conceptInputPrincipal").value = "";
+        document.getElementById("montoInputPrincipal").value = "";
+        saveDataToLocalStoragePrincipal();
+      });
+      
+      document.getElementById("addRowButtonTarjeta").addEventListener("click", function() {
+        const c = document.getElementById("conceptInputTarjeta").value.trim();
+        const m = document.getElementById("montoInputTarjeta").value.trim();
+        const cu = document.getElementById("cuotasInputTarjeta").value.trim();
+        if (!c || !m) {
+          alert("Ingrese al menos Concepto y Monto.");
+          return;
+        }
+        const newData = { concepto: c, monto: "$" + parseFloat(m).toFixed(2), cuotas: cu, fijo: false };
+        const row = createRowTarjeta(newData);
+        tableBodyTarjeta.appendChild(row);
+        document.getElementById("conceptInputTarjeta").value = "";
+        document.getElementById("montoInputTarjeta").value = "";
+        document.getElementById("cuotasInputTarjeta").value = "";
+        saveDataToLocalStorageTarjeta();
+      });
+      
+      // Funciones para edición y borrado
+      const addPayIconListener = (icon, saveCallback) => {
+        icon.addEventListener("click", function(e) {
+          e.stopPropagation();
+          if (this.getAttribute("data-paid") === "false") {
+            this.textContent = "✅";
+            this.classList.add("paid");
+            this.setAttribute("data-paid", "true");
+          } else {
+            if (confirm("¿Desea reestablecerlo a 'no pago'?")) {
+              this.textContent = "💸";
+              this.classList.remove("paid");
+              this.setAttribute("data-paid", "false");
+            }
+          }
+          saveCallback();
+        });
+      };
+      
+      const makeCellEditable = (cell, saveCallback) => {
+        if (cell.querySelector("input")) return;
+        const orig = cell.textContent;
+        const inp = document.createElement("input");
+        inp.type = "text";
+        inp.value = orig;
+        inp.className = "editable-cell";
+        cell.textContent = "";
+        cell.appendChild(inp);
+        inp.focus();
+        inp.addEventListener("blur", () => { cell.textContent = inp.value; saveCallback(); });
+        inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { cell.textContent = inp.value; saveCallback(); }});
+      };
+      
+      const addEditableListener = (cell, saveCallback) => {
+        cell.addEventListener("click", function(e) {
+          e.stopPropagation();
+          makeCellEditable(cell, saveCallback);
+        });
+      };
+      
+      const addRowDeletionListener = (row, saveCallback) => {
+        let timer;
+        row.addEventListener("mousedown", () => { timer = setTimeout(() => { if(confirm("¿Borrar esta entrada?")) { row.remove(); saveCallback(); }}, 1500); });
+        row.addEventListener("mouseup", () => clearTimeout(timer));
+        row.addEventListener("mouseleave", () => clearTimeout(timer));
+      };
+      
+      const addRowListeners = (row, saveCallback) => {
+        row.querySelectorAll(".editable").forEach(cell => addEditableListener(cell, saveCallback));
+        addRowDeletionListener(row, saveCallback);
+      };
+      
+      // Exportar / Importar JSON
+      document.getElementById("exportButton").addEventListener("click", function() {
+        const dataPrincipal = localStorage.getItem("gastosMensuales") || "{}";
+        const dataTarjeta = localStorage.getItem("tarjetaCredito") || "{}";
+        const exportData = { gastosMensuales: JSON.parse(dataPrincipal), tarjetaCredito: JSON.parse(dataTarjeta) };
+        const blob = new Blob([JSON.stringify(exportData)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "gastosMensuales.json";
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+      
+      const importFile = document.getElementById("importFile");
+      document.getElementById("importButton").addEventListener("click", () => { importFile.click(); });
+      importFile.addEventListener("change", function() {
+        const file = this.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          try {
+            const data = JSON.parse(e.target.result);
+            localStorage.setItem("gastosMensuales", JSON.stringify(data.gastosMensuales || {}));
+            localStorage.setItem("tarjetaCredito", JSON.stringify(data.tarjetaCredito || {}));
+            loadDataFromLocalStoragePrincipal();
+            loadDataFromLocalStorageTarjeta();
+          } catch (err) {
+            alert("Error al leer el JSON.");
+          }
+        };
+        reader.readAsText(file);
+        importFile.value = "";
+      });
+      
+      // Inicializar
+      loadDataFromLocalStoragePrincipal();
+      loadDataFromLocalStorageTarjeta();
+      updateTarjetaTitle();
+    });
+  </script>
+</body>
+</html>
