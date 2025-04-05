@@ -62,6 +62,13 @@
     #expensesTablePrincipal colgroup col:nth-child(1) { width: 30%; }
     #expensesTablePrincipal colgroup col:nth-child(2) { width: 50%; }
     #expensesTablePrincipal colgroup col:nth-child(3) { width: 20%; }
+    /* Tarjeta de Crédito: 40% Concepto, 40% Monto, 20% Cuotas */
+    #expensesTableCredit colgroup col:nth-child(1) { width: 40%; }
+    #expensesTableCredit colgroup col:nth-child(2) { width: 40%; }
+    #expensesTableCredit colgroup col:nth-child(3) { width: 20%; }
+    /* Otros gastos: 50% Concepto, 50% Monto */
+    #expensesTableOtros colgroup col:nth-child(1) { width: 50%; }
+    #expensesTableOtros colgroup col:nth-child(2) { width: 50%; }
     th, td {
       padding: 10px;
       border: 1px solid #ddd;
@@ -69,10 +76,6 @@
       vertical-align: middle;
       word-wrap: break-word;
     }
-    /* Tarjeta de Crédito: Ajustamos las columnas: 40% Concepto, 40% Monto, 20% Cuotas */
-    #expensesTableCredit colgroup col:nth-child(1) { width: 40%; }
-    #expensesTableCredit colgroup col:nth-child(2) { width: 40%; }
-    #expensesTableCredit colgroup col:nth-child(3) { width: 20%; }
     /* Centrar el contenido de la columna de Cuotas en Tarjeta de Crédito */
     #expensesTableCredit td:nth-child(3) {
       text-align: center;
@@ -389,6 +392,8 @@
       document.getElementById("tabCredit").addEventListener("click", () => { setActiveTab("Credit"); });
       document.getElementById("tabOtros").addEventListener("click", () => { setActiveTab("Otros"); });
       function setActiveTab(tab) {
+        // Forzamos editable = true para poder ingresar datos en todas las pestañas.
+        editable = true;
         document.querySelectorAll(".tab").forEach(el => el.classList.remove("active"));
         document.querySelectorAll(".screen").forEach(el => el.classList.remove("active"));
         if(tab === "Principal") {
@@ -406,17 +411,25 @@
         }
       }
       
-      /* Configuración del selector de historial (por ahora solo el mes actual) */
-      function populateMonthSelect(selectId, keyDefault) {
+      /* Configuración del selector de historial (se muestra un historial de los 12 meses anteriores, incluyendo el actual) */
+      function populateMonthSelect(selectId) {
         const select = document.getElementById(selectId);
         select.innerHTML = "";
-        const option = document.createElement("option");
-        option.value = keyDefault;
-        option.textContent = `${currentMonthName} ${currentYear}`;
-        option.selected = true;
-        select.appendChild(option);
+        const currentDate = new Date();
+        for (let i = 0; i < 12; i++) {
+          const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+          const year = date.getFullYear();
+          const month = date.getMonth() + 1; // 1-indexado
+          const monthName = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"][date.getMonth()];
+          const key = `expenses_${year}_${month}`;
+          const option = document.createElement("option");
+          option.value = key;
+          option.textContent = `${monthName} ${year}`;
+          if(i === 0) option.selected = true;
+          select.appendChild(option);
+        }
       }
-      populateMonthSelect("monthSelectPrincipal", keyPrincipal);
+      populateMonthSelect("monthSelectPrincipal");
       
       document.getElementById("currentMonthDisplayPrincipal").textContent = `${currentMonthName} ${currentYear}`;
       document.getElementById("currentMonthDisplayCredit").textContent = `${currentMonthName} ${currentYear}`;
@@ -435,8 +448,7 @@
       });
       
       // ---------------------------
-      // Para pruebas: si el mes actual es abril y no hay datos para marzo en Tarjeta de Crédito,
-      // establecemos datos ficticios para marzo con valor exacto 1.856.934.
+      // Datos ficticios para marzo en Tarjeta de Crédito: si es abril y no hay datos para marzo, se inserta 1.856.934.
       if(currentMonth === 3 && !localStorage.getItem(`credit_${currentYear}_3`)) {
         const fictitiousMarch = [
           { concept: "Gastos Fijos", amount: 1856934, paid: true, fixed: true }
@@ -465,9 +477,7 @@
         let creditSum = computeSum(prevCreditData);
         let allCreditPaid = prevCreditData.length > 0 && prevCreditData.every(exp => exp.paid);
         
-        // Separar la fila "Tarjeta de Crédito" del resto
-        let creditRow = null;
-        let otherRows = [];
+        let creditRow = null, otherRows = [];
         principalData.forEach((expense, index) => {
           if(expense.concept === "Tarjeta de Crédito") {
             creditRow = { expense, index };
@@ -476,7 +486,6 @@
           }
         });
         
-        // Renderizar la fila "Tarjeta de Crédito" usando la suma del mes anterior
         if(creditRow) {
           const row = document.createElement("tr");
           const conceptCell = document.createElement("td");
@@ -485,13 +494,8 @@
           conceptCell.textContent = creditRow.expense.concept;
           amountCell.textContent = "$ " + formatNumber(creditSum);
           const statusButton = document.createElement("button");
-          if(allCreditPaid) {
-            statusButton.innerHTML = "✅";
-            statusButton.style.color = "#27ae60";
-          } else {
-            statusButton.innerHTML = "💲";
-            statusButton.style.color = "#e74c3c";
-          }
+          statusButton.innerHTML = allCreditPaid ? "✅" : "💲";
+          statusButton.style.color = allCreditPaid ? "#27ae60" : "#e74c3c";
           statusButton.title = allCreditPaid ? "Pagado (click para revertir)" : "Pagar";
           statusButton.classList.add("icon-button", "pay-icon");
           statusButton.addEventListener("click", function() {
@@ -512,32 +516,29 @@
           tbody.appendChild(row);
         }
         
-        // Renderizar las demás filas de Principal
         otherRows.forEach(({ expense, index }) => {
           const row = document.createElement("tr");
-          if(editable) {
-            row.addEventListener("mousedown", function(e) {
-              this.pressTimer = setTimeout(() => {
-                if(confirm("¿Está segura de eliminar este registro?")) {
-                  principalData.splice(index, 1);
-                  saveData(keyPrincipal, principalData);
-                  renderPrincipal();
-                }
-              }, 1000);
-            });
-            row.addEventListener("mouseup", function(e) { clearTimeout(this.pressTimer); });
-            row.addEventListener("mouseleave", function(e) { clearTimeout(this.pressTimer); });
-            row.addEventListener("touchstart", function(e) {
-              this.pressTimer = setTimeout(() => {
-                if(confirm("¿Está segura de eliminar este registro?")) {
-                  principalData.splice(index, 1);
-                  saveData(keyPrincipal, principalData);
-                  renderPrincipal();
-                }
-              }, 1000);
-            });
-            row.addEventListener("touchend", function(e) { clearTimeout(this.pressTimer); });
-          }
+          row.addEventListener("mousedown", function() {
+            this.pressTimer = setTimeout(() => {
+              if(confirm("¿Está segura de eliminar este registro?")) {
+                principalData.splice(index, 1);
+                saveData(keyPrincipal, principalData);
+                renderPrincipal();
+              }
+            }, 1000);
+          });
+          row.addEventListener("mouseup", function() { clearTimeout(this.pressTimer); });
+          row.addEventListener("mouseleave", function() { clearTimeout(this.pressTimer); });
+          row.addEventListener("touchstart", function() {
+            this.pressTimer = setTimeout(() => {
+              if(confirm("¿Está segura de eliminar este registro?")) {
+                principalData.splice(index, 1);
+                saveData(keyPrincipal, principalData);
+                renderPrincipal();
+              }
+            }, 1000);
+          });
+          row.addEventListener("touchend", function() { clearTimeout(this.pressTimer); });
           const conceptCell = document.createElement("td");
           const amountCell = document.createElement("td");
           const actionsCell = document.createElement("td");
@@ -550,13 +551,8 @@
             inlineEditCell(amountCell, expense, "amount", index, renderPrincipal, keyPrincipal, principalData);
           });
           const payButton = document.createElement("button");
-          if(expense.paid) {
-            payButton.innerHTML = "✅";
-            payButton.style.color = "#27ae60";
-          } else {
-            payButton.innerHTML = "💲";
-            payButton.style.color = "#e74c3c";
-          }
+          payButton.innerHTML = expense.paid ? "✅" : "💲";
+          payButton.style.color = expense.paid ? "#27ae60" : "#e74c3c";
           payButton.title = expense.paid ? "Pagado (click para revertir)" : "Pagar";
           payButton.classList.add("icon-button", "pay-icon");
           payButton.addEventListener("click", function() {
@@ -587,13 +583,8 @@
         const actionsCellOtros = document.createElement("td");
         const allOthersPaid = otrosData.length > 0 && otrosData.every(exp => exp.paid);
         const othersPayButton = document.createElement("button");
-        if(allOthersPaid) {
-          othersPayButton.innerHTML = "✅";
-          othersPayButton.style.color = "#27ae60";
-        } else {
-          othersPayButton.innerHTML = "💲";
-          othersPayButton.style.color = "#e74c3c";
-        }
+        othersPayButton.innerHTML = allOthersPaid ? "✅" : "💲";
+        othersPayButton.style.color = allOthersPaid ? "#27ae60" : "#e74c3c";
         othersPayButton.title = allOthersPaid ? "Pagado (click para revertir)" : "Pagar";
         othersPayButton.classList.add("icon-button", "pay-icon");
         othersPayButton.addEventListener("click", function() {
@@ -616,7 +607,7 @@
         
         updateSummaryPrincipal();
         
-        // Formulario para agregar gasto en Principal
+        // Formulario para agregar en Principal
         const container = document.getElementById("addExpenseContainerPrincipal");
         container.innerHTML = `
           <h3>Agregar nuevo gasto</h3>
@@ -641,48 +632,6 @@
         });
       }
       
-      function updateSummaryPrincipal() {
-        let total = 0;
-        let pending = 0;
-        principalData.forEach(exp => {
-          if(exp.concept === "Tarjeta de Crédito") {
-            total += creditData.length > 0 ? computeSum(creditData) : 0;
-            if(!(creditData.length > 0 && creditData.every(e => e.paid))) {
-              pending += creditData.length > 0 ? computeSum(creditData) : 0;
-            }
-          } else {
-            total += parseFloat(exp.amount);
-            if(!exp.paid) pending += parseFloat(exp.amount);
-          }
-        });
-        let othersTotal = computeSum(otrosData);
-        total += othersTotal;
-        if(!(otrosData.length > 0 && otrosData.every(exp => exp.paid))) {
-          pending += othersTotal;
-        }
-        let summaryHTML = `<p>💰 Total a pagar: $${formatNumber(total)}</p>
-                           <p>🕒 Falta pagar: $${formatNumber(pending)}</p>`;
-        if(pending > 0) {
-          summaryHTML += `<button id="payAllButtonPrincipal" class="icon-button">💸 Pagar todo</button>`;
-        } else {
-          summaryHTML += `<p>✅ ¡Todo pagado!</p>`;
-        }
-        document.getElementById("summaryBoxPrincipal").innerHTML = summaryHTML;
-        document.getElementById("summaryBoxPrincipal").style.backgroundColor = pending > 0 ? "#ffebee" : "#e0ffe0";
-        const payAllButton = document.getElementById("payAllButtonPrincipal");
-        if(payAllButton) {
-          payAllButton.addEventListener("click", function() {
-            principalData.forEach(exp => {
-              if(exp.concept !== "Tarjeta de Crédito") {
-                exp.paid = true;
-              }
-            });
-            saveData(keyPrincipal, principalData);
-            renderPrincipal();
-          });
-        }
-      }
-      
       /* Renderizado de la pestaña Tarjeta de Crédito */
       function renderCredit() {
         const tbody = document.querySelector("#expensesTableCredit tbody");
@@ -691,7 +640,7 @@
           const row = document.createElement("tr");
           // Permitir eliminar con long press en Tarjeta de Crédito
           if(editable) {
-            row.addEventListener("mousedown", function(e) {
+            row.addEventListener("mousedown", function() {
               this.pressTimer = setTimeout(() => {
                 if(confirm("¿Está segura de eliminar este registro?")) {
                   creditData.splice(index, 1);
@@ -700,9 +649,9 @@
                 }
               }, 1000);
             });
-            row.addEventListener("mouseup", function(e) { clearTimeout(this.pressTimer); });
-            row.addEventListener("mouseleave", function(e) { clearTimeout(this.pressTimer); });
-            row.addEventListener("touchstart", function(e) {
+            row.addEventListener("mouseup", function() { clearTimeout(this.pressTimer); });
+            row.addEventListener("mouseleave", function() { clearTimeout(this.pressTimer); });
+            row.addEventListener("touchstart", function() {
               this.pressTimer = setTimeout(() => {
                 if(confirm("¿Está segura de eliminar este registro?")) {
                   creditData.splice(index, 1);
@@ -711,7 +660,7 @@
                 }
               }, 1000);
             });
-            row.addEventListener("touchend", function(e) { clearTimeout(this.pressTimer); });
+            row.addEventListener("touchend", function() { clearTimeout(this.pressTimer); });
           }
           const conceptCell = document.createElement("td");
           const amountCell = document.createElement("td");
@@ -727,7 +676,7 @@
           } else {
             conceptCell.style.backgroundColor = "";
           }
-          // MODIFICACIÓN: Al tocar el recuadro del monto se marca o desmarca el pago.
+          // Al tocar el recuadro del monto se marca o desmarca el pago.
           amountCell.textContent = "$ " + formatNumber(expense.amount);
           updateCreditAmountCellStyle(expense, amountCell);
           amountCell.addEventListener("click", function() {
@@ -786,7 +735,7 @@
         });
       }
       
-      // Función para actualizar el estilo del recuadro del monto en Tarjeta de Crédito
+      // Función para actualizar el estilo del monto en Tarj. de Crédito
       function updateCreditAmountCellStyle(expense, cell) {
         if(expense.paid) {
           cell.style.backgroundColor = "#d4f7d4"; // verde clarito
@@ -812,29 +761,27 @@
         tbody.innerHTML = "";
         otrosData.forEach((expense, index) => {
           const row = document.createElement("tr");
-          if(editable) {
-            row.addEventListener("mousedown", function(e) {
-              this.pressTimer = setTimeout(() => {
-                if(confirm("¿Está segura de eliminar este registro?")) {
-                  otrosData.splice(index, 1);
-                  saveData(keyOtros, otrosData);
-                  renderOtros();
-                }
-              }, 1000);
-            });
-            row.addEventListener("mouseup", function(e) { clearTimeout(this.pressTimer); });
-            row.addEventListener("mouseleave", function(e) { clearTimeout(this.pressTimer); });
-            row.addEventListener("touchstart", function(e) {
-              this.pressTimer = setTimeout(() => {
-                if(confirm("¿Está segura de eliminar este registro?")) {
-                  otrosData.splice(index, 1);
-                  saveData(keyOtros, otrosData);
-                  renderOtros();
-                }
-              }, 1000);
-            });
-            row.addEventListener("touchend", function(e) { clearTimeout(this.pressTimer); });
-          }
+          row.addEventListener("mousedown", function() {
+            this.pressTimer = setTimeout(() => {
+              if(confirm("¿Está segura de eliminar este registro?")) {
+                otrosData.splice(index, 1);
+                saveData(keyOtros, otrosData);
+                renderOtros();
+              }
+            }, 1000);
+          });
+          row.addEventListener("mouseup", function() { clearTimeout(this.pressTimer); });
+          row.addEventListener("mouseleave", function() { clearTimeout(this.pressTimer); });
+          row.addEventListener("touchstart", function() {
+            this.pressTimer = setTimeout(() => {
+              if(confirm("¿Está segura de eliminar este registro?")) {
+                otrosData.splice(index, 1);
+                saveData(keyOtros, otrosData);
+                renderOtros();
+              }
+            }, 1000);
+          });
+          row.addEventListener("touchend", function() { clearTimeout(this.pressTimer); });
           const conceptCell = document.createElement("td");
           const amountCell = document.createElement("td");
           conceptCell.textContent = expense.concept;
@@ -959,7 +906,29 @@
         exportBackup();
       }
       
-      // Forzamos la activación de la pestaña Principal al cargar la página
+      // ---------------------------
+      // Datos ficticios para marzo en Tarjeta de Crédito:
+      // Si es abril y no existen datos para marzo, se inserta 1.856.934.
+      if(currentMonth === 3 && !localStorage.getItem(`credit_${currentYear}_3`)) {
+        const fictitiousMarch = [
+          { concept: "Gastos Fijos", amount: 1856934, paid: true, fixed: true }
+        ];
+        localStorage.setItem(`credit_${currentYear}_3`, JSON.stringify(fictitiousMarch));
+      }
+      // ---------------------------
+      
+      // ---------------------------
+      // En la pantalla PRINCIPAL, el valor de "Tarjeta de Crédito" se calcula usando los datos del mes anterior.
+      function getPrevCreditKey() {
+        if(currentMonth === 0) {
+          return `credit_${currentYear-1}_12`;
+        } else {
+          return `credit_${currentYear}_${currentMonth}`;
+        }
+      }
+      // ---------------------------
+      
+      // Forzamos la activación de la pestaña Principal al cargar la página.
       setActiveTab("Principal");
     });
   </script>
