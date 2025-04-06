@@ -294,9 +294,14 @@
             });
           }
         });
-        // Insertar siempre la entrada fija "Tarj. de crédito"
+        // Actualiza o inserta siempre la entrada fija "Tarj. de crédito"
         const prevConsumo = getTarjetaConsumoFromPreviousMonth();
-        data.unshift({ concepto: "Tarj. de crédito", monto: "$" + prevConsumo.toFixed(2), pagado: false });
+        const indexTarj = data.findIndex(item => item.concepto === "Tarj. de crédito");
+        if (indexTarj !== -1) {
+          data[indexTarj].monto = "$" + prevConsumo.toFixed(2);
+        } else {
+          data.unshift({ concepto: "Tarj. de crédito", monto: "$" + prevConsumo.toFixed(2), pagado: false });
+        }
         saveDataForMonthPrincipal(currentKey, data);
         updateSummaryPrincipal();
       };
@@ -350,9 +355,11 @@
         const currentKey = monthSelector.value;
         const all = getAllDataPrincipal();
         let data = all[currentKey] || [];
-        // Asegurarse de que exista la entrada fija
-        if (!data.find(item => item.concepto === "Tarj. de crédito")) {
-          const prevConsumo = getTarjetaConsumoFromPreviousMonth();
+        const prevConsumo = getTarjetaConsumoFromPreviousMonth();
+        const indexTarj = data.findIndex(item => item.concepto === "Tarj. de crédito");
+        if (indexTarj !== -1) {
+          data[indexTarj].monto = "$" + prevConsumo.toFixed(2);
+        } else {
           data.unshift({ concepto: "Tarj. de crédito", monto: "$" + prevConsumo.toFixed(2), pagado: false });
         }
         data.forEach(item => {
