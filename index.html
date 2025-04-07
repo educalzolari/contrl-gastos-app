@@ -125,11 +125,16 @@
       box-sizing: border-box;
     }
     /* Ajustes para inputs en Tarjeta de crédito */
-    #cuotasInputTarjeta {
-      width: 40px;
-    }
     #conceptInputTarjeta {
       width: 150px;
+    }
+    #montoInputTarjeta {
+      /* Achicado al 30% de su tamaño original */
+      width: 30%;
+    }
+    #cuotasInputTarjeta {
+      /* Campo de solo 2 dígitos */
+      width: 40px;
     }
     .add-button {
       cursor: pointer;
@@ -159,6 +164,12 @@
     #tarjetaTitle {
       text-align: left;
       margin: 0 10px 15px 10px;
+    }
+    /* Efecto visual para swipe-to-delete */
+    tr.swipe-delete {
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      transform: translateX(100%);
+      opacity: 0;
     }
   </style>
 </head>
@@ -222,7 +233,16 @@
     <div class="header-section">
       <h2 id="tarjetaTitle">Consumos de ...</h2>
     </div>
+    <!-- Se añade colgroup para ajustar anchos:
+         • Concepto: 33.33%
+         • Monto: se agranda a ~53.33%
+         • Cuotas: se reduce a ~13.33% (40% de lo original) -->
     <table>
+      <colgroup>
+        <col style="width: 33.33%;">
+        <col style="width: 53.33%;">
+        <col style="width: 13.33%;">
+      </colgroup>
       <thead>
         <tr>
           <th>Concepto</th>
@@ -235,11 +255,12 @@
     <div class="form-section">
       <div class="tarjeta-inputs">
         <input type="text" id="conceptInputTarjeta" placeholder="Concepto">
-        <!-- Para montos en Tarjeta se usa step=1 para permitir números grandes -->
+        <!-- El input monto se achica al 30% de su tamaño original -->
         <input type="number" id="montoInputTarjeta" placeholder="Monto" step="1" min="0">
         <input type="text" id="cuotasInputTarjeta" placeholder="Cuotas (ej. 6)">
         <button id="addRowButtonTarjeta" class="add-button">➕</button>
       </div>
+      <!-- Botón Copiar consumos se posiciona debajo, alineado a la izquierda -->
       <button id="bringConsumptionsButton" class="add-button">📋 Copiar consumos</button>
     </div>
     <div class="summary-box" id="summaryBoxTarjeta">
@@ -295,6 +316,45 @@
       } else {
         alertDiv.style.display = "none";
       }
+    }
+    
+    // Función para agregar swipe-to-delete (deslizar a la derecha) con un efecto visual
+    function addSwipeToDeleteListener(row, saveCallback) {
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let swiped = false;
+      
+      row.addEventListener("touchstart", function(e) {
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        swiped = false;
+      });
+      
+      row.addEventListener("touchmove", function(e) {
+        const touch = e.touches[0];
+        const diffX = touch.clientX - touchStartX;
+        const diffY = touch.clientY - touchStartY;
+        // Si el desplazamiento horizontal es mayor a 100px y el vertical es mínimo...
+        if(diffX > 100 && Math.abs(diffY) < 50) {
+          // Agregamos efecto visual
+          row.classList.add("swipe-delete");
+          swiped = true;
+        }
+      });
+      
+      row.addEventListener("touchend", function(e) {
+        if(swiped) {
+          setTimeout(() => {
+            if (confirm("¿Borrar esta entrada?")) {
+              row.remove();
+              saveCallback();
+            } else {
+              row.classList.remove("swipe-delete");
+            }
+          }, 300);
+        }
+      });
     }
     
     document.addEventListener("DOMContentLoaded", function() {
@@ -443,7 +503,7 @@
         const row = document.createElement("tr");
         if (data.concepto === "Tarj. de crédito") {
           row.setAttribute("data-special", "true");
-          // En Principal, la fila de "Tarj. de crédito" NO se puede editar ni borrar
+          // Esta fila no se debe poder borrar (ni editar) por swipe
         }
         const cCell = document.createElement("td");
         cCell.textContent = data.concepto;
@@ -508,7 +568,7 @@
         localStorage.setItem("tarjetaCredito", JSON.stringify(all));
       };
       
-      // En la pestaña Tarjeta, las filas NO se pueden editar ni borrar (solo se permite alternar estado de pago o fijo)
+      // Ahora se permitirá borrar por swipe en Tarjeta (aunque originalmente no se permitía editar/borrar)
       const saveDataToLocalStorageTarjeta = () => {
         const currentKey = monthSelector.value;
         const data = [];
@@ -539,7 +599,7 @@
         summaryBoxTarjeta.innerHTML = `<p>Total consumos: 💳 ${formatCurrency(total)}</p>`;
       };
       
-      // Creamos la fila para Tarjeta: las celdas no son editables ni eliminables; solo se puede alternar el estado "pagado" al hacer clic en el monto y alternar "fijo" en el concepto.
+      // Creamos la fila para Tarjeta: las celdas no son editables (se mantiene el cambio de estado al tocar)
       const createRowTarjeta = (data) => {
         const row = document.createElement("tr");
         const cCell = document.createElement("td");
@@ -581,7 +641,8 @@
         row.appendChild(cCell);
         row.appendChild(mCell);
         row.appendChild(cuotasCell);
-        // En Tarjeta no se permite editar o borrar la fila
+        // Se agrega swipe-to-delete a la fila en Tarjeta
+        addSwipeToDeleteListener(row, saveDataToLocalStorageTarjeta);
         return row;
       };
       
@@ -697,7 +758,7 @@
         saveDataToLocalStoragePrincipal();
       });
       
-      // Botón para agregar consumo en Tarjeta de crédito (no se puede editar ni borrar, solo se marca "pagado")
+      // Botón para agregar consumo en Tarjeta de crédito (se agrega la posibilidad de borrarlo por swipe)
       document.getElementById("addRowButtonTarjeta").addEventListener("click", function() {
         const c = document.getElementById("conceptInputTarjeta").value.trim();
         const m = document.getElementById("montoInputTarjeta").value.trim();
@@ -726,7 +787,7 @@
         document.getElementById("cuotasInputTarjeta").value = "";
       });
       
-      // Funciones para edición y borrado en Principal (Tarjeta no se permite editar ni borrar)
+      // Funciones para edición y borrado en Principal (se agrega swipe para borrar, pero se omite para la fila "Tarj. de crédito")
       const addPayIconListener = (icon, saveCallback) => {
         icon.addEventListener("click", function(e) {
           e.stopPropagation();
@@ -774,7 +835,10 @@
         });
       };
       
+      // Función que une la funcionalidad de borrado por long press y swipe,
+      // salvo en la fila especial "Tarj. de crédito"
       const addRowDeletionListener = (row, saveCallback) => {
+        if(row.getAttribute("data-special") === "true") return;
         let timer;
         row.addEventListener("mousedown", () => { 
           timer = setTimeout(() => { 
@@ -791,6 +855,7 @@
       const addRowListeners = (row, saveCallback) => {
         row.querySelectorAll(".editable").forEach(cell => addEditableListener(cell, saveCallback));
         addRowDeletionListener(row, saveCallback);
+        addSwipeToDeleteListener(row, saveCallback);
       };
       
       // Exportar / Importar JSON
