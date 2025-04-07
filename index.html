@@ -10,6 +10,14 @@
       margin: 10px;
       padding: 0;
     }
+    /* Estilo para el título con fuente elegante y efecto sutil */
+    header h1 {
+      font-family: 'Georgia', serif;
+      font-size: 2.5em;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+      text-align: center;
+      margin-bottom: 10px;
+    }
     /* Barra de alerta para respaldo */
     #backupAlert {
       background-color: #f8d7da;
@@ -17,10 +25,6 @@
       padding: 5px 10px;
       font-size: 0.9em;
       text-align: left;
-      margin-bottom: 10px;
-    }
-    header {
-      text-align: center;
       margin-bottom: 10px;
     }
     /* Pestañas */
@@ -51,7 +55,7 @@
       text-align: left;
       margin: 0 10px 15px 10px;
     }
-    /* Recuadro para consultar mes, fecha de cierre y mes seleccionado */
+    /* Recuadro para consultar mes, fecha de cierre y mes (sin etiqueta) */
     .date-container {
       border: 1px solid #ccc;
       background-color: #f9f9f9;
@@ -67,10 +71,6 @@
     select, input[type="date"] {
       font-size: 1em;
       padding: 5px;
-    }
-    .header-section {
-      text-align: center;
-      margin-bottom: 15px;
     }
     /* Tablas */
     table {
@@ -133,7 +133,7 @@
       width: 30%;
     }
     #cuotasInputTarjeta {
-      /* Campo de solo 2 dígitos */
+      /* Campo para máximo 2 dígitos */
       width: 40px;
     }
     .add-button {
@@ -181,7 +181,7 @@
     <h1>Gastos Mensuales</h1>
   </header>
   
-  <!-- Recuadro para seleccionar mes, fecha de cierre y mes seleccionado -->
+  <!-- Recuadro para seleccionar mes, fecha de cierre y mes (sin etiqueta) -->
   <div class="date-container">
     <div class="month-selector">
       <label for="monthSelector">Consultar mes: </label>
@@ -194,13 +194,12 @@
     </div>
   
     <div class="header-section">
-      <p>Mes seleccionado: <span id="currentMonthName"></span></p>
+      <p><span id="currentMonthName"></span></p>
     </div>
   </div>
   
   <!-- Pestañas -->
   <div class="tab-nav">
-    <!-- Cambiado a emoji de casa en Principal -->
     <button class="tab-link active" data-tab="principal">🏠 Principal</button>
     <button class="tab-link" data-tab="tarjeta">💳 Tarjeta de crédito</button>
   </div>
@@ -233,10 +232,6 @@
     <div class="header-section">
       <h2 id="tarjetaTitle">Consumos de ...</h2>
     </div>
-    <!-- Se añade colgroup para ajustar anchos:
-         • Concepto: 33.33%
-         • Monto: se agranda a ~53.33%
-         • Cuotas: se reduce a ~13.33% (40% de lo original) -->
     <table>
       <colgroup>
         <col style="width: 33.33%;">
@@ -255,12 +250,10 @@
     <div class="form-section">
       <div class="tarjeta-inputs">
         <input type="text" id="conceptInputTarjeta" placeholder="Concepto">
-        <!-- El input monto se achica al 30% de su tamaño original -->
         <input type="number" id="montoInputTarjeta" placeholder="Monto" step="1" min="0">
         <input type="text" id="cuotasInputTarjeta" placeholder="Cuotas (ej. 6)">
         <button id="addRowButtonTarjeta" class="add-button">➕</button>
       </div>
-      <!-- Botón Copiar consumos se posiciona debajo, alineado a la izquierda -->
       <button id="bringConsumptionsButton" class="add-button">📋 Copiar consumos</button>
     </div>
     <div class="summary-box" id="summaryBoxTarjeta">
@@ -294,9 +287,9 @@
     function getDefaultClosingDate(monthKey) {
       const [yearStr, monthStr] = monthKey.split("-");
       const year = Number(yearStr);
-      const month = Number(monthStr); // 1-12
+      const month = Number(monthStr);
       const lastDay = new Date(year, month, 0);
-      const dayOfWeek = lastDay.getDay(); // 0=Dom, 1=Lun, ..., 4=Jue, etc.
+      const dayOfWeek = lastDay.getDay();
       let offset;
       if(dayOfWeek <= 4) {
         offset = 4 - dayOfWeek;
@@ -307,18 +300,14 @@
       return formatDateForInput(closingDate);
     }
     
-    // Función para actualizar la barra de alerta de respaldo
+    // Actualiza la barra de alerta de respaldo
     function updateBackupAlert(currentKey) {
       const backupKey = "backup_" + currentKey;
       const alertDiv = document.getElementById("backupAlert");
-      if (!localStorage.getItem(backupKey)) {
-        alertDiv.style.display = "block";
-      } else {
-        alertDiv.style.display = "none";
-      }
+      alertDiv.style.display = localStorage.getItem(backupKey) ? "none" : "block";
     }
     
-    // Función para agregar swipe-to-delete (deslizar a la derecha) con un efecto visual
+    // Función para agregar swipe-to-delete con efecto visual
     function addSwipeToDeleteListener(row, saveCallback) {
       let touchStartX = 0;
       let touchStartY = 0;
@@ -335,9 +324,7 @@
         const touch = e.touches[0];
         const diffX = touch.clientX - touchStartX;
         const diffY = touch.clientY - touchStartY;
-        // Si el desplazamiento horizontal es mayor a 100px y el vertical es mínimo...
         if(diffX > 100 && Math.abs(diffY) < 50) {
-          // Agregamos efecto visual
           row.classList.add("swipe-delete");
           swiped = true;
         }
@@ -356,6 +343,48 @@
         }
       });
     }
+    
+    // Función para agregar listener de edición por long press a una celda
+    const addEditableListener = (cell, saveCallback) => {
+      let pressTimer;
+      cell.addEventListener("mousedown", function(e) {
+        e.stopPropagation();
+        pressTimer = setTimeout(() => {
+          makeCellEditable(cell, saveCallback);
+        }, 1000);
+      });
+      cell.addEventListener("mouseup", () => clearTimeout(pressTimer));
+      cell.addEventListener("mouseleave", () => clearTimeout(pressTimer));
+      cell.addEventListener("touchstart", function(e) {
+        pressTimer = setTimeout(() => {
+          makeCellEditable(cell, saveCallback);
+        }, 1000);
+      });
+      cell.addEventListener("touchend", () => clearTimeout(pressTimer));
+    };
+    
+    // Función que permite editar el contenido de una celda
+    const makeCellEditable = (cell, saveCallback) => {
+      if (cell.querySelector("input")) return;
+      const orig = cell.textContent;
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.value = orig;
+      inp.className = "editable-cell";
+      cell.textContent = "";
+      cell.appendChild(inp);
+      inp.focus();
+      inp.addEventListener("blur", () => { 
+        cell.textContent = inp.value; 
+        saveCallback(); 
+      });
+      inp.addEventListener("keydown", (e) => { 
+        if (e.key === "Enter") { 
+          cell.textContent = inp.value; 
+          saveCallback(); 
+        }
+      });
+    };
     
     document.addEventListener("DOMContentLoaded", function() {
       const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -387,7 +416,6 @@
       closingDateInput.value = getDefaultClosingDate(monthOptions[0].key);
       updateBackupAlert(monthOptions[0].key);
       
-      // Al cambiar el mes, actualizar la Fecha de cierre y la alerta de respaldo
       monthSelector.addEventListener("change", function() {
         const newKey = monthSelector.value;
         closingDateInput.value = getDefaultClosingDate(newKey);
@@ -460,7 +488,6 @@
         const currentKey = monthSelector.value;
         const data = [];
         tableBodyPrincipal.querySelectorAll("tr").forEach(row => {
-          // En la pestaña Principal todas las entradas se pueden editar y borrar, excepto la de "Tarj. de crédito"
           if (row.getAttribute("data-special") === "true") {
             data.push({ concepto: "Tarj. de crédito", monto: row.children[1].textContent, pagado: row.children[2].querySelector(".pay-icon").getAttribute("data-paid") === "true" });
           } else {
@@ -503,7 +530,6 @@
         const row = document.createElement("tr");
         if (data.concepto === "Tarj. de crédito") {
           row.setAttribute("data-special", "true");
-          // Esta fila no se debe poder borrar (ni editar) por swipe
         }
         const cCell = document.createElement("td");
         cCell.textContent = data.concepto;
@@ -523,12 +549,10 @@
         row.appendChild(mCell);
         row.appendChild(pCell);
         
-        // Para filas editables en Principal, se añaden listeners para editar y borrar.
         if (!row.hasAttribute("data-special")) {
           addPayIconListener(pay, saveDataToLocalStoragePrincipal);
           addRowListeners(row, saveDataToLocalStoragePrincipal);
         } else {
-          // Para la fila "Tarj. de crédito" solo se permite cambiar estado de pago.
           addPayIconListener(pay, saveDataToLocalStoragePrincipal);
         }
         return row;
@@ -568,7 +592,6 @@
         localStorage.setItem("tarjetaCredito", JSON.stringify(all));
       };
       
-      // Ahora se permitirá borrar por swipe en Tarjeta (aunque originalmente no se permitía editar/borrar)
       const saveDataToLocalStorageTarjeta = () => {
         const currentKey = monthSelector.value;
         const data = [];
@@ -599,7 +622,6 @@
         summaryBoxTarjeta.innerHTML = `<p>Total consumos: 💳 ${formatCurrency(total)}</p>`;
       };
       
-      // Creamos la fila para Tarjeta: las celdas no son editables (se mantiene el cambio de estado al tocar)
       const createRowTarjeta = (data) => {
         const row = document.createElement("tr");
         const cCell = document.createElement("td");
@@ -618,7 +640,6 @@
         } else {
           mCell.textContent = formatCurrency(parseInt(data.monto.replace('$','')));
         }
-        // Al hacer clic en el recuadro de monto se alterna el estado de "pagado"
         mCell.addEventListener("click", function(e) {
           e.stopPropagation();
           if (!data.pagado) {
@@ -641,7 +662,6 @@
         row.appendChild(cCell);
         row.appendChild(mCell);
         row.appendChild(cuotasCell);
-        // Se agrega swipe-to-delete a la fila en Tarjeta
         addSwipeToDeleteListener(row, saveDataToLocalStorageTarjeta);
         return row;
       };
@@ -666,16 +686,12 @@
         tarjetaTitle.textContent = `Consumos de ${selected.textContent}`;
       };
       
-      // Botón "Copiar consumos" en Tarjeta: trae consumos fijos del mes anterior y actualiza cuotas
       document.getElementById("bringConsumptionsButton").addEventListener("click", function() {
         const currentKey = monthSelector.value;
         const prevKey = getPreviousMonthKey(currentKey);
         const allTarjeta = getAllDataTarjeta();
         const prevData = allTarjeta[prevKey] || [];
         let consumosAFiltrar = prevData.filter(item => item.fijo === true);
-        // Para cada consumo:
-        // - Si cuotas es solo un número (estado inicial), se convierte a "1/C"
-        // - Si ya está en "N/C", incrementa N si N < C; si se completa, se descarta
         consumosAFiltrar = consumosAFiltrar.map(item => {
           if (item.cuotas) {
             if (item.cuotas.includes("/")) {
@@ -697,7 +713,6 @@
             return item;
           }
         }).filter(item => item !== null);
-        // Evitar duplicados en el mes actual
         let currentData = allTarjeta[currentKey] || [];
         consumosAFiltrar = consumosAFiltrar.filter(newItem => {
           return !currentData.some(existingItem => 
@@ -712,9 +727,6 @@
         loadDataFromLocalStorageTarjeta();
       });
       
-      // Al cambiar de mes:
-      // En Principal se copian todos los datos (reiniciando el estado de pago) y se actualiza la entrada fija "Tarj. de crédito".
-      // En Tarjeta se mantiene la data que ya esté en el localStorage para el mes actual.
       monthSelector.addEventListener("change", function() {
         const newKey = monthSelector.value;
         const allPrincipal = getAllDataPrincipal();
@@ -738,7 +750,6 @@
         updateBackupAlert(newKey);
       });
       
-      // Botón para agregar consumo en Principal (se puede editar y borrar)
       document.getElementById("addRowButtonPrincipal").addEventListener("click", function() {
         const c = document.getElementById("conceptInputPrincipal").value.trim();
         const m = document.getElementById("montoInputPrincipal").value.trim();
@@ -758,7 +769,6 @@
         saveDataToLocalStoragePrincipal();
       });
       
-      // Botón para agregar consumo en Tarjeta de crédito (se agrega la posibilidad de borrarlo por swipe)
       document.getElementById("addRowButtonTarjeta").addEventListener("click", function() {
         const c = document.getElementById("conceptInputTarjeta").value.trim();
         const m = document.getElementById("montoInputTarjeta").value.trim();
@@ -774,7 +784,6 @@
           fijo: cu !== "",
           pagado: false
         };
-        // Determinar en qué mes almacenar el consumo según la Fecha de cierre
         const targetMonth = getConsumptionMonthKey();
         const allTarjeta = getAllDataTarjeta();
         let dataForTarget = allTarjeta[targetMonth] || [];
@@ -787,7 +796,6 @@
         document.getElementById("cuotasInputTarjeta").value = "";
       });
       
-      // Funciones para edición y borrado en Principal (se agrega swipe para borrar, pero se omite para la fila "Tarj. de crédito")
       const addPayIconListener = (icon, saveCallback) => {
         icon.addEventListener("click", function(e) {
           e.stopPropagation();
@@ -806,37 +814,7 @@
         });
       };
       
-      const makeCellEditable = (cell, saveCallback) => {
-        if (cell.querySelector("input")) return;
-        const orig = cell.textContent;
-        const inp = document.createElement("input");
-        inp.type = "text";
-        inp.value = orig;
-        inp.className = "editable-cell";
-        cell.textContent = "";
-        cell.appendChild(inp);
-        inp.focus();
-        inp.addEventListener("blur", () => { 
-          cell.textContent = inp.value; 
-          saveCallback(); 
-        });
-        inp.addEventListener("keydown", (e) => { 
-          if (e.key === "Enter") { 
-            cell.textContent = inp.value; 
-            saveCallback(); 
-          }
-        });
-      };
-      
-      const addEditableListener = (cell, saveCallback) => {
-        cell.addEventListener("click", function(e) {
-          e.stopPropagation();
-          makeCellEditable(cell, saveCallback);
-        });
-      };
-      
-      // Función que une la funcionalidad de borrado por long press y swipe,
-      // salvo en la fila especial "Tarj. de crédito"
+      // Añade listeners de eliminación por long press y swipe (excepto en fila especial)
       const addRowDeletionListener = (row, saveCallback) => {
         if(row.getAttribute("data-special") === "true") return;
         let timer;
@@ -858,7 +836,6 @@
         addSwipeToDeleteListener(row, saveCallback);
       };
       
-      // Exportar / Importar JSON
       document.getElementById("exportButton").addEventListener("click", function() {
         const dataPrincipal = localStorage.getItem("gastosMensuales") || "{}";
         const dataTarjeta = localStorage.getItem("tarjetaCredito") || "{}";
@@ -873,7 +850,6 @@
         a.download = "gastosMensuales.json";
         a.click();
         URL.revokeObjectURL(url);
-        // Al exportar, se marca respaldo para el mes actual
         const currentKey = monthSelector.value;
         localStorage.setItem("backup_" + currentKey, "true");
         updateBackupAlert(currentKey);
@@ -902,7 +878,6 @@
         importFile.value = "";
       });
       
-      // Inicializar vistas
       loadDataFromLocalStoragePrincipal();
       loadDataFromLocalStorageTarjeta();
       updateTarjetaTitle();
