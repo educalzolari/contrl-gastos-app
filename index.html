@@ -51,6 +51,19 @@
       text-align: left;
       margin: 0 10px 15px 10px;
     }
+    /* Recuadro para consultar mes, fecha de cierre y mes seleccionado */
+    .date-container {
+      border: 1px solid #ccc;
+      background-color: #f9f9f9;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      text-align: left;
+    }
+    .date-container .header-section {
+      text-align: left;
+      margin-bottom: 0;
+    }
     select, input[type="date"] {
       font-size: 1em;
       padding: 5px;
@@ -96,14 +109,27 @@
     /* Formulario en línea y con tamaños reducidos */
     .form-section {
       display: inline-flex;
+      flex-direction: column;
       gap: 5px;
-      align-items: center;
+      align-items: flex-start;
       margin-bottom: 15px;
     }
+    .form-section .inputs-container, .tarjeta-inputs {
+      display: inline-flex;
+      gap: 5px;
+      align-items: center;
+    }
     .form-section input {
-      width: 100px;
       padding: 4px;
       font-size: 0.9em;
+      box-sizing: border-box;
+    }
+    /* Ajustes para inputs en Tarjeta de crédito */
+    #cuotasInputTarjeta {
+      width: 40px;
+    }
+    #conceptInputTarjeta {
+      width: 150px;
     }
     .add-button {
       cursor: pointer;
@@ -129,6 +155,11 @@
       text-align: center;
       font-size: 1.1em;
     }
+    /* Alinear título en la pestaña Tarjeta a la izquierda */
+    #tarjetaTitle {
+      text-align: left;
+      margin: 0 10px 15px 10px;
+    }
   </style>
 </head>
 <body>
@@ -139,28 +170,28 @@
     <h1>Gastos Mensuales</h1>
   </header>
   
+  <!-- Recuadro para seleccionar mes, fecha de cierre y mes seleccionado -->
+  <div class="date-container">
+    <div class="month-selector">
+      <label for="monthSelector">Consultar mes: </label>
+      <select id="monthSelector"></select>
+    </div>
+  
+    <div class="closing-date-container">
+      <label for="closingDate">Fecha de cierre: </label>
+      <input type="date" id="closingDate">
+    </div>
+  
+    <div class="header-section">
+      <p>Mes seleccionado: <span id="currentMonthName"></span></p>
+    </div>
+  </div>
+  
   <!-- Pestañas -->
   <div class="tab-nav">
     <!-- Cambiado a emoji de casa en Principal -->
     <button class="tab-link active" data-tab="principal">🏠 Principal</button>
     <button class="tab-link" data-tab="tarjeta">💳 Tarjeta de crédito</button>
-  </div>
-  
-  <!-- Menú de meses -->
-  <div class="month-selector">
-    <label for="monthSelector">Consultar mes: </label>
-    <select id="monthSelector"></select>
-  </div>
-  
-  <!-- Campo Fecha de cierre para Tarjeta de crédito -->
-  <div class="closing-date-container">
-    <label for="closingDate">Fecha de cierre: </label>
-    <input type="date" id="closingDate">
-  </div>
-  
-  <!-- Mes seleccionado -->
-  <div class="header-section">
-    <p>Mes seleccionado: <span id="currentMonthName"></span></p>
   </div>
   
   <!-- Contenido Pestaña Principal -->
@@ -189,7 +220,7 @@
   <!-- Contenido Pestaña Tarjeta de crédito -->
   <div id="tabTarjeta" class="tab-content">
     <div class="header-section">
-      <h2 id="tarjetaTitle">Consumos del mes de ...</h2>
+      <h2 id="tarjetaTitle">Consumos de ...</h2>
     </div>
     <table>
       <thead>
@@ -202,13 +233,14 @@
       <tbody id="tableBodyTarjeta"></tbody>
     </table>
     <div class="form-section">
-      <input type="text" id="conceptInputTarjeta" placeholder="Concepto">
-      <!-- Para montos en Tarjeta se usa step=1 para permitir números grandes -->
-      <input type="number" id="montoInputTarjeta" placeholder="Monto" step="1" min="0">
-      <input type="text" id="cuotasInputTarjeta" placeholder="Cuotas (ej. 6)">
-      <button id="addRowButtonTarjeta" class="add-button">➕</button>
-      <!-- Botón renombrado y alineado a la izquierda -->
-      <button id="bringConsumptionsButton" class="add-button" style="text-align: left;">📋 Copiar consumos</button>
+      <div class="tarjeta-inputs">
+        <input type="text" id="conceptInputTarjeta" placeholder="Concepto">
+        <!-- Para montos en Tarjeta se usa step=1 para permitir números grandes -->
+        <input type="number" id="montoInputTarjeta" placeholder="Monto" step="1" min="0">
+        <input type="text" id="cuotasInputTarjeta" placeholder="Cuotas (ej. 6)">
+        <button id="addRowButtonTarjeta" class="add-button">➕</button>
+      </div>
+      <button id="bringConsumptionsButton" class="add-button">📋 Copiar consumos</button>
     </div>
     <div class="summary-box" id="summaryBoxTarjeta">
       <p>Total consumos: 💳 $0</p>
@@ -482,7 +514,7 @@
         const data = [];
         tableBodyTarjeta.querySelectorAll("tr").forEach(row => {
           const cells = row.querySelectorAll("td");
-          if (cells.length >= 3) {
+          if(cells.length >= 3) {
             data.push({
               concepto: cells[0].textContent,
               monto: cells[1].textContent,
@@ -570,7 +602,7 @@
       
       const updateTarjetaTitle = () => {
         const selected = monthSelector.options[monthSelector.selectedIndex];
-        tarjetaTitle.textContent = `Consumos del mes de ${selected.textContent}`;
+        tarjetaTitle.textContent = `Consumos de ${selected.textContent}`;
       };
       
       // Botón "Copiar consumos" en Tarjeta: trae consumos fijos del mes anterior y actualiza cuotas
