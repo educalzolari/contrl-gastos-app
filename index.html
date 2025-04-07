@@ -218,7 +218,7 @@
         <input type="number" id="montoInputPrincipal" placeholder="Monto" step="1" min="0">
         <button id="addRowButtonPrincipal" class="add-button">➕</button>
       </div>
-      <!-- Botón para copiar consumos fijos -->
+      <!-- Botón para copiar consumos fijos desde el mes anterior -->
       <button id="copyFixedButtonPrincipal" class="add-button">📋 Copiar consumos fijos</button>
     </div>
     <div class="summary-box" id="summaryBoxPrincipal">
@@ -339,12 +339,18 @@
       let pressTimer;
       cell.addEventListener("mousedown", function(e) {
         e.stopPropagation();
-        pressTimer = setTimeout(() => { makeCellEditable(cell, saveCallback); }, 1000);
+        pressTimer = setTimeout(() => { 
+          cell.longPressActivated = true;
+          makeCellEditable(cell, saveCallback);
+        }, 1000);
       });
       cell.addEventListener("mouseup", () => clearTimeout(pressTimer));
       cell.addEventListener("mouseleave", () => clearTimeout(pressTimer));
       cell.addEventListener("touchstart", function(e) {
-        pressTimer = setTimeout(() => { makeCellEditable(cell, saveCallback); }, 1000);
+        pressTimer = setTimeout(() => { 
+          cell.longPressActivated = true;
+          makeCellEditable(cell, saveCallback);
+        }, 1000);
       });
       cell.addEventListener("touchend", () => clearTimeout(pressTimer));
     };
@@ -422,7 +428,7 @@
         }
       }
       
-      // Función auxiliar para convertir el string de monto (eliminando puntos)
+      // Convierte el string del monto eliminando puntos (separador de miles)
       const getMontoValue = (montoStr) => parseInt(montoStr.replace(/\./g, ''));
       
       const getTarjetaConsumoFromPreviousMonth = () => {
@@ -501,7 +507,7 @@
         summaryBoxPrincipal.innerHTML = `<p>Total de gastos: 💰 ${formatCurrency(total)}</p><p>Restante por pagar: 🏦 ${formatCurrency(restante)}</p>`;
       };
       
-      // Función para crear una fila en Principal (se permite editar y borrar; se marca fijo al tocar el concepto)
+      // Crea una fila en la pestaña Principal; al tocar la celda del concepto se alterna el estado "fijo"
       const createRowPrincipal = (data) => {
         const row = document.createElement("tr");
         if (data.concepto === "Tarj. de crédito") {
@@ -511,11 +517,9 @@
         
         const cCell = document.createElement("td");
         cCell.textContent = data.concepto;
-        // Si es fijo, se muestra con la clase "fixed"
         if (data.fijo) cCell.classList.add("fixed");
         if (!row.hasAttribute("data-special")) {
           cCell.classList.add("editable");
-          // Al tocar, se alterna el estado fijo (si no se activa la edición por long press)
           cCell.addEventListener("click", function(e) {
             e.stopPropagation();
             this.classList.toggle("fixed");
@@ -566,16 +570,14 @@
         updateSummaryPrincipal();
       };
       
-      // Botón para copiar consumos fijos en Principal
+      // Botón para copiar gastos fijos en Principal (copia solo desde el mes anterior)
       document.getElementById("copyFixedButtonPrincipal").addEventListener("click", function() {
         const currentKey = monthSelector.value;
         const allPrincipal = getAllDataPrincipal();
         const currentData = allPrincipal[currentKey] || [];
         const prevKey = getPreviousMonthKey(currentKey);
         const prevData = allPrincipal[prevKey] || [];
-        // Filtrar consumos fijos (excluyendo la fila "Tarj. de crédito")
         let fixedItems = prevData.filter(item => item.fijo === true && item.concepto !== "Tarj. de crédito");
-        // Evitar duplicados (por concepto)
         fixedItems = fixedItems.filter(newItem => !currentData.some(existingItem => existingItem.concepto === newItem.concepto));
         if(fixedItems.length > 0) {
           const updatedData = currentData.concat(fixedItems);
@@ -628,6 +630,7 @@
         summaryBoxTarjeta.innerHTML = `<p>Total consumos: 💳 ${formatCurrency(total)}</p>`;
       };
       
+      // Permite editar montos y cuotas en Tarjeta mediante long press; se conserva el click para alternar "pagado" en el monto
       const createRowTarjeta = (data) => {
         const row = document.createElement("tr");
         const cCell = document.createElement("td");
@@ -646,8 +649,24 @@
         } else {
           mCell.textContent = formatCurrency(parseInt(data.monto.replace('$','').replace(/\./g, '')));
         }
+        mCell.classList.add("editable");
+        addEditableListener(mCell, function() {
+          // Al editar, se actualiza el monto sin el "✅"
+          let newVal = mCell.textContent.replace(" ✅", "");
+          data.monto = newVal;
+          saveDataToLocalStorageTarjeta();
+          if(data.pagado) {
+            mCell.textContent = formatCurrency(parseInt(data.monto.replace('$','').replace(/\./g, ''))) + " ✅";
+            mCell.classList.add("paid-cell");
+          } else {
+            mCell.textContent = formatCurrency(parseInt(data.monto.replace('$','').replace(/\./g, '')));
+          }
+        });
         mCell.addEventListener("click", function(e) {
-          e.stopPropagation();
+          if(this.longPressActivated) {
+            this.longPressActivated = false;
+            return;
+          }
           if (!data.pagado) {
             data.pagado = true;
             mCell.textContent = formatCurrency(parseInt(data.monto.replace('$','').replace(/\./g, ''))) + " ✅";
@@ -662,8 +681,14 @@
             }
           }
         });
+        
         const cuotasCell = document.createElement("td");
         cuotasCell.textContent = data.cuotas || "";
+        cuotasCell.classList.add("editable");
+        addEditableListener(cuotasCell, function() {
+          data.cuotas = cuotasCell.textContent;
+          saveDataToLocalStorageTarjeta();
+        });
         
         row.appendChild(cCell);
         row.appendChild(mCell);
