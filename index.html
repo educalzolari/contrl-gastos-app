@@ -98,7 +98,7 @@
     .paid {
       color: green;
     }
-    /* Para gasto fijo en Tarjeta (color naranja) */
+    /* Para gasto fijo (color naranja claro) */
     .fixed {
       background-color: #FFDAB9;
     }
@@ -129,11 +129,9 @@
       width: 150px;
     }
     #montoInputTarjeta {
-      /* Achicado al 30% de su tamaño original */
       width: 30%;
     }
     #cuotasInputTarjeta {
-      /* Campo para máximo 2 dígitos */
       width: 40px;
     }
     .add-button {
@@ -174,7 +172,7 @@
   </style>
 </head>
 <body>
-  <!-- Barra de alerta de respaldo (se mostrará si falta respaldo) -->
+  <!-- Barra de alerta de respaldo -->
   <div id="backupAlert" style="display: none;">Falta guardar respaldo para este mes!</div>
   
   <header>
@@ -187,12 +185,10 @@
       <label for="monthSelector">Consultar mes: </label>
       <select id="monthSelector"></select>
     </div>
-  
     <div class="closing-date-container">
       <label for="closingDate">Fecha de cierre: </label>
       <input type="date" id="closingDate">
     </div>
-  
     <div class="header-section">
       <p><span id="currentMonthName"></span></p>
     </div>
@@ -217,9 +213,13 @@
       <tbody id="tableBodyPrincipal"></tbody>
     </table>
     <div class="form-section">
-      <input type="text" id="conceptInputPrincipal" placeholder="Concepto">
-      <input type="number" id="montoInputPrincipal" placeholder="Monto" step="1" min="0">
-      <button id="addRowButtonPrincipal" class="add-button">➕</button>
+      <div class="inputs-container">
+        <input type="text" id="conceptInputPrincipal" placeholder="Concepto">
+        <input type="number" id="montoInputPrincipal" placeholder="Monto" step="1" min="0">
+        <button id="addRowButtonPrincipal" class="add-button">➕</button>
+      </div>
+      <!-- Botón para copiar consumos fijos -->
+      <button id="copyFixedButtonPrincipal" class="add-button">📋 Copiar consumos fijos</button>
     </div>
     <div class="summary-box" id="summaryBoxPrincipal">
       <p>Total de gastos: 💰 $0</p>
@@ -269,13 +269,13 @@
   </div>
   
   <script>
-    // Función para formatear números sin decimales y con separador de miles (con punto)
+    // Formatea un número a moneda (sin decimales, con punto como separador de miles)
     function formatCurrency(value) {
       const num = Number(value);
       return "$" + num.toLocaleString('es-ES', { maximumFractionDigits: 0, minimumFractionDigits: 0 });
     }
     
-    // Función para formatear fecha en "YYYY-MM-DD"
+    // Formatea una fecha en "YYYY-MM-DD"
     function formatDateForInput(date) {
       const year = date.getFullYear();
       const month = ("0" + (date.getMonth() + 1)).slice(-2);
@@ -283,31 +283,26 @@
       return `${year}-${month}-${day}`;
     }
     
-    // Calcula la fecha de cierre por defecto
+    // Calcula la fecha de cierre por defecto para el mes seleccionado
     function getDefaultClosingDate(monthKey) {
       const [yearStr, monthStr] = monthKey.split("-");
       const year = Number(yearStr);
       const month = Number(monthStr);
       const lastDay = new Date(year, month, 0);
       const dayOfWeek = lastDay.getDay();
-      let offset;
-      if(dayOfWeek <= 4) {
-        offset = 4 - dayOfWeek;
-      } else {
-        offset = -(dayOfWeek - 4);
-      }
+      let offset = dayOfWeek <= 4 ? 4 - dayOfWeek : -(dayOfWeek - 4);
       const closingDate = new Date(lastDay.getTime() + offset * 24 * 3600 * 1000);
       return formatDateForInput(closingDate);
     }
     
-    // Actualiza la alerta de respaldo
+    // Actualiza la barra de alerta de respaldo
     function updateBackupAlert(currentKey) {
       const backupKey = "backup_" + currentKey;
       const alertDiv = document.getElementById("backupAlert");
       alertDiv.style.display = localStorage.getItem(backupKey) ? "none" : "block";
     }
     
-    // Swipe-to-delete con efecto visual
+    // Añade efecto swipe-to-delete a una fila
     function addSwipeToDeleteListener(row, saveCallback) {
       let touchStartX = 0, touchStartY = 0, swiped = false;
       row.addEventListener("touchstart", function(e) {
@@ -339,7 +334,7 @@
       });
     }
     
-    // Edición por long press en una celda
+    // Permite editar el contenido de una celda al mantenerla presionada (long press)
     const addEditableListener = (cell, saveCallback) => {
       let pressTimer;
       cell.addEventListener("mousedown", function(e) {
@@ -354,7 +349,6 @@
       cell.addEventListener("touchend", () => clearTimeout(pressTimer));
     };
     
-    // Permite editar el contenido de una celda
     const makeCellEditable = (cell, saveCallback) => {
       if (cell.querySelector("input")) return;
       const orig = cell.textContent;
@@ -428,7 +422,7 @@
         }
       }
       
-      // Se corrige el parseo del monto eliminando puntos (separador de miles)
+      // Función auxiliar para convertir el string de monto (eliminando puntos)
       const getMontoValue = (montoStr) => parseInt(montoStr.replace(/\./g, ''));
       
       const getTarjetaConsumoFromPreviousMonth = () => {
@@ -476,7 +470,8 @@
               data.push({
                 concepto: cells[0].textContent,
                 monto: cells[1].textContent,
-                pagado: cells[2].querySelector(".pay-icon").getAttribute("data-paid") === "true"
+                pagado: cells[2].querySelector(".pay-icon").getAttribute("data-paid") === "true",
+                fijo: cells[0].classList.contains("fixed")
               });
             }
           }
@@ -488,7 +483,7 @@
         } else {
           data.unshift({ concepto: "Tarj. de crédito", monto: formatCurrency(prevConsumo), pagado: false });
         }
-        saveDataForMonthPrincipal(currentKey, data);
+        saveDataForMonthPrincipal(monthSelector.value, data);
         updateSummaryPrincipal();
       };
       
@@ -506,14 +501,28 @@
         summaryBoxPrincipal.innerHTML = `<p>Total de gastos: 💰 ${formatCurrency(total)}</p><p>Restante por pagar: 🏦 ${formatCurrency(restante)}</p>`;
       };
       
+      // Función para crear una fila en Principal (se permite editar y borrar; se marca fijo al tocar el concepto)
       const createRowPrincipal = (data) => {
         const row = document.createElement("tr");
         if (data.concepto === "Tarj. de crédito") {
           row.setAttribute("data-special", "true");
         }
+        if (!data.hasOwnProperty("fijo")) data.fijo = false;
+        
         const cCell = document.createElement("td");
         cCell.textContent = data.concepto;
-        if (!row.hasAttribute("data-special")) cCell.classList.add("editable");
+        // Si es fijo, se muestra con la clase "fixed"
+        if (data.fijo) cCell.classList.add("fixed");
+        if (!row.hasAttribute("data-special")) {
+          cCell.classList.add("editable");
+          // Al tocar, se alterna el estado fijo (si no se activa la edición por long press)
+          cCell.addEventListener("click", function(e) {
+            e.stopPropagation();
+            this.classList.toggle("fixed");
+            data.fijo = this.classList.contains("fixed");
+            saveDataToLocalStoragePrincipal();
+          });
+        }
         const mCell = document.createElement("td");
         mCell.textContent = formatCurrency(parseInt(data.monto.replace('$','').replace(/\./g, '')));
         if (!row.hasAttribute("data-special")) mCell.classList.add("editable");
@@ -529,7 +538,7 @@
         row.appendChild(mCell);
         row.appendChild(pCell);
         
-        if (!row.getAttribute("data-special")) {
+        if (!row.hasAttribute("data-special")) {
           addPayIconListener(pay, saveDataToLocalStoragePrincipal);
           addRowListeners(row, saveDataToLocalStoragePrincipal);
         } else {
@@ -556,6 +565,25 @@
         });
         updateSummaryPrincipal();
       };
+      
+      // Botón para copiar consumos fijos en Principal
+      document.getElementById("copyFixedButtonPrincipal").addEventListener("click", function() {
+        const currentKey = monthSelector.value;
+        const allPrincipal = getAllDataPrincipal();
+        const currentData = allPrincipal[currentKey] || [];
+        const prevKey = getPreviousMonthKey(currentKey);
+        const prevData = allPrincipal[prevKey] || [];
+        // Filtrar consumos fijos (excluyendo la fila "Tarj. de crédito")
+        let fixedItems = prevData.filter(item => item.fijo === true && item.concepto !== "Tarj. de crédito");
+        // Evitar duplicados (por concepto)
+        fixedItems = fixedItems.filter(newItem => !currentData.some(existingItem => existingItem.concepto === newItem.concepto));
+        if(fixedItems.length > 0) {
+          const updatedData = currentData.concat(fixedItems);
+          allPrincipal[currentKey] = updatedData;
+          localStorage.setItem("gastosMensuales", JSON.stringify(allPrincipal));
+          loadDataFromLocalStoragePrincipal();
+        }
+      });
       
       // --- Pestaña Tarjeta de crédito ---
       const tableBodyTarjeta = document.getElementById("tableBodyTarjeta");
@@ -664,70 +692,6 @@
         tarjetaTitle.textContent = `Consumos de ${selected.textContent}`;
       };
       
-      document.getElementById("bringConsumptionsButton").addEventListener("click", function() {
-        const currentKey = monthSelector.value;
-        const prevKey = getPreviousMonthKey(currentKey);
-        const allTarjeta = getAllDataTarjeta();
-        const prevData = allTarjeta[prevKey] || [];
-        let consumosAFiltrar = prevData.filter(item => item.fijo === true);
-        consumosAFiltrar = consumosAFiltrar.map(item => {
-          if (item.cuotas) {
-            if (item.cuotas.includes("/")) {
-              let [n, total] = item.cuotas.split("/").map(Number);
-              if (n < total) {
-                return { ...item, cuotas: (n + 1) + "/" + total };
-              } else {
-                return null;
-              }
-            } else {
-              let total = Number(item.cuotas);
-              if (total > 0) {
-                return { ...item, cuotas: "1/" + total };
-              } else {
-                return item;
-              }
-            }
-          } else {
-            return item;
-          }
-        }).filter(item => item !== null);
-        let currentData = allTarjeta[currentKey] || [];
-        consumosAFiltrar = consumosAFiltrar.filter(newItem => {
-          return !currentData.some(existingItem => 
-            existingItem.concepto === newItem.concepto &&
-            existingItem.monto === newItem.monto &&
-            existingItem.cuotas === newItem.cuotas
-          );
-        });
-        currentData = currentData.concat(consumosAFiltrar);
-        allTarjeta[currentKey] = currentData;
-        localStorage.setItem("tarjetaCredito", JSON.stringify(allTarjeta));
-        loadDataFromLocalStorageTarjeta();
-      });
-      
-      monthSelector.addEventListener("change", function() {
-        const newKey = monthSelector.value;
-        const allPrincipal = getAllDataPrincipal();
-        if (!allPrincipal[newKey] || allPrincipal[newKey].length === 0) {
-          let source = [];
-          if (allPrincipal[newKey] && allPrincipal[newKey].length > 0) {
-            source = allPrincipal[newKey].map(item => ({
-              concepto: item.concepto,
-              monto: item.monto,
-              pagado: false
-            }));
-          } else {
-            source = [{ concepto: "Tarj. de crédito", monto: "$0", pagado: false }];
-          }
-          saveDataForMonthPrincipal(newKey, source);
-        }
-        currentMonthNameEl.textContent = monthSelector.options[monthSelector.selectedIndex].textContent;
-        updateTarjetaTitle();
-        loadDataFromLocalStoragePrincipal();
-        loadDataFromLocalStorageTarjeta();
-        updateBackupAlert(newKey);
-      });
-      
       document.getElementById("addRowButtonPrincipal").addEventListener("click", function() {
         const c = document.getElementById("conceptInputPrincipal").value.trim();
         const m = document.getElementById("montoInputPrincipal").value.trim();
@@ -739,7 +703,8 @@
         const newData = { 
           concepto: c, 
           monto: formatCurrency(montoValue), 
-          pagado: false 
+          pagado: false,
+          fijo: false
         };
         const row = createRowPrincipal(newData);
         tableBodyPrincipal.appendChild(row);
