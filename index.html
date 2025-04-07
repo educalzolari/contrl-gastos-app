@@ -261,7 +261,7 @@
     </div>
   </div>
   
-  <!-- Sección de almacenamiento (alineada a la izquierda) -->
+  <!-- Sección de almacenamiento -->
   <div class="storage-section">
     <button id="exportButton" class="storage-button">💾 Guardar JSON</button>
     <button id="importButton" class="storage-button">📂 Cargar JSON</button>
@@ -269,13 +269,13 @@
   </div>
   
   <script>
-    // Función para formatear números sin decimales y con separador de miles (formato español)
+    // Función para formatear números sin decimales y con separador de miles (con punto)
     function formatCurrency(value) {
       const num = Number(value);
       return "$" + num.toLocaleString('es-ES', { maximumFractionDigits: 0, minimumFractionDigits: 0 });
     }
     
-    // Función para formatear una fecha en "YYYY-MM-DD"
+    // Función para formatear fecha en "YYYY-MM-DD"
     function formatDateForInput(date) {
       const year = date.getFullYear();
       const month = ("0" + (date.getMonth() + 1)).slice(-2);
@@ -283,7 +283,7 @@
       return `${year}-${month}-${day}`;
     }
     
-    // Calcula la Fecha de cierre por defecto: se busca el jueves de la última semana del mes seleccionado
+    // Calcula la fecha de cierre por defecto
     function getDefaultClosingDate(monthKey) {
       const [yearStr, monthStr] = monthKey.split("-");
       const year = Number(yearStr);
@@ -300,26 +300,22 @@
       return formatDateForInput(closingDate);
     }
     
-    // Actualiza la barra de alerta de respaldo
+    // Actualiza la alerta de respaldo
     function updateBackupAlert(currentKey) {
       const backupKey = "backup_" + currentKey;
       const alertDiv = document.getElementById("backupAlert");
       alertDiv.style.display = localStorage.getItem(backupKey) ? "none" : "block";
     }
     
-    // Función para agregar swipe-to-delete con efecto visual
+    // Swipe-to-delete con efecto visual
     function addSwipeToDeleteListener(row, saveCallback) {
-      let touchStartX = 0;
-      let touchStartY = 0;
-      let swiped = false;
-      
+      let touchStartX = 0, touchStartY = 0, swiped = false;
       row.addEventListener("touchstart", function(e) {
         const touch = e.touches[0];
         touchStartX = touch.clientX;
         touchStartY = touch.clientY;
         swiped = false;
       });
-      
       row.addEventListener("touchmove", function(e) {
         const touch = e.touches[0];
         const diffX = touch.clientX - touchStartX;
@@ -329,7 +325,6 @@
           swiped = true;
         }
       });
-      
       row.addEventListener("touchend", function(e) {
         if(swiped) {
           setTimeout(() => {
@@ -344,26 +339,22 @@
       });
     }
     
-    // Función para agregar listener de edición por long press a una celda
+    // Edición por long press en una celda
     const addEditableListener = (cell, saveCallback) => {
       let pressTimer;
       cell.addEventListener("mousedown", function(e) {
         e.stopPropagation();
-        pressTimer = setTimeout(() => {
-          makeCellEditable(cell, saveCallback);
-        }, 1000);
+        pressTimer = setTimeout(() => { makeCellEditable(cell, saveCallback); }, 1000);
       });
       cell.addEventListener("mouseup", () => clearTimeout(pressTimer));
       cell.addEventListener("mouseleave", () => clearTimeout(pressTimer));
       cell.addEventListener("touchstart", function(e) {
-        pressTimer = setTimeout(() => {
-          makeCellEditable(cell, saveCallback);
-        }, 1000);
+        pressTimer = setTimeout(() => { makeCellEditable(cell, saveCallback); }, 1000);
       });
       cell.addEventListener("touchend", () => clearTimeout(pressTimer));
     };
     
-    // Función que permite editar el contenido de una celda
+    // Permite editar el contenido de una celda
     const makeCellEditable = (cell, saveCallback) => {
       if (cell.querySelector("input")) return;
       const orig = cell.textContent;
@@ -374,16 +365,8 @@
       cell.textContent = "";
       cell.appendChild(inp);
       inp.focus();
-      inp.addEventListener("blur", () => { 
-        cell.textContent = inp.value; 
-        saveCallback(); 
-      });
-      inp.addEventListener("keydown", (e) => { 
-        if (e.key === "Enter") { 
-          cell.textContent = inp.value; 
-          saveCallback(); 
-        }
-      });
+      inp.addEventListener("blur", () => { cell.textContent = inp.value; saveCallback(); });
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { cell.textContent = inp.value; saveCallback(); } });
     };
     
     document.addEventListener("DOMContentLoaded", function() {
@@ -422,7 +405,6 @@
         updateBackupAlert(newKey);
       });
       
-      // Función para obtener la clave del mes anterior (formato "YYYY-MM")
       const getPreviousMonthKey = (currentKey) => {
         let [year, month] = currentKey.split("-").map(Number);
         month--;
@@ -430,7 +412,6 @@
         return `${year}-${("0" + month).slice(-2)}`;
       };
       
-      // Determina en qué mes almacenar el consumo según la Fecha de cierre
       function getConsumptionMonthKey() {
         const selectedKey = monthSelector.value;
         const closingDate = new Date(closingDateInput.value);
@@ -447,17 +428,18 @@
         }
       }
       
-      // Función para obtener el total de consumos del mes anterior (para el resumen en Principal)
+      // Se corrige el parseo del monto eliminando puntos (separador de miles)
+      const getMontoValue = (montoStr) => parseInt(montoStr.replace(/\./g, ''));
+      
       const getTarjetaConsumoFromPreviousMonth = () => {
         const currentKey = monthSelector.value;
         const prevKey = getPreviousMonthKey(currentKey);
         const allTarjeta = JSON.parse(localStorage.getItem("tarjetaCredito")) || {};
         const prevData = allTarjeta[prevKey] || [];
-        const total = prevData.reduce((sum, item) => sum + (parseInt(item.monto.replace('$','')) || 0), 0);
+        const total = prevData.reduce((sum, item) => sum + (parseInt(item.monto.replace('$','').replace(/\./g, '')) || 0), 0);
         return total;
       };
       
-      // SISTEMA DE PESTAÑAS
       const tabLinks = document.querySelectorAll(".tab-link");
       const tabContents = document.querySelectorAll(".tab-content");
       tabLinks.forEach(link => {
@@ -474,9 +456,7 @@
       const tableBodyPrincipal = document.getElementById("tableBodyPrincipal");
       const summaryBoxPrincipal = document.getElementById("summaryBoxPrincipal");
       
-      const getAllDataPrincipal = () => {
-        return JSON.parse(localStorage.getItem("gastosMensuales")) || {};
-      };
+      const getAllDataPrincipal = () => JSON.parse(localStorage.getItem("gastosMensuales")) || {};
       
       const saveDataForMonthPrincipal = (monthKey, data) => {
         const all = getAllDataPrincipal();
@@ -517,7 +497,7 @@
         tableBodyPrincipal.querySelectorAll("tr").forEach(row => {
           const cells = row.querySelectorAll("td");
           if (cells.length >= 3) {
-            const m = parseInt(cells[1].textContent.replace('$','')) || 0;
+            const m = parseInt(cells[1].textContent.replace('$','').replace(/\./g, '')) || 0;
             total += m;
             const pagado = cells[2].querySelector(".pay-icon").getAttribute("data-paid") === "true";
             if (!pagado) restante += m;
@@ -535,7 +515,7 @@
         cCell.textContent = data.concepto;
         if (!row.hasAttribute("data-special")) cCell.classList.add("editable");
         const mCell = document.createElement("td");
-        mCell.textContent = formatCurrency(parseInt(data.monto.replace('$','')));
+        mCell.textContent = formatCurrency(parseInt(data.monto.replace('$','').replace(/\./g, '')));
         if (!row.hasAttribute("data-special")) mCell.classList.add("editable");
         const pCell = document.createElement("td");
         const pay = document.createElement("span");
@@ -549,7 +529,7 @@
         row.appendChild(mCell);
         row.appendChild(pCell);
         
-        if (!row.hasAttribute("data-special")) {
+        if (!row.getAttribute("data-special")) {
           addPayIconListener(pay, saveDataToLocalStoragePrincipal);
           addRowListeners(row, saveDataToLocalStoragePrincipal);
         } else {
@@ -582,9 +562,7 @@
       const summaryBoxTarjeta = document.getElementById("summaryBoxTarjeta");
       const tarjetaTitle = document.getElementById("tarjetaTitle");
       
-      const getAllDataTarjeta = () => {
-        return JSON.parse(localStorage.getItem("tarjetaCredito")) || {};
-      };
+      const getAllDataTarjeta = () => JSON.parse(localStorage.getItem("tarjetaCredito")) || {};
       
       const saveDataForMonthTarjeta = (monthKey, data) => {
         const all = getAllDataTarjeta();
@@ -616,7 +594,7 @@
         tableBodyTarjeta.querySelectorAll("tr").forEach(row => {
           const cells = row.querySelectorAll("td");
           if(cells.length >= 3) {
-            total += parseInt(cells[1].textContent.replace('$','')) || 0;
+            total += parseInt(cells[1].textContent.replace('$','').replace(/\./g, '')) || 0;
           }
         });
         summaryBoxTarjeta.innerHTML = `<p>Total consumos: 💳 ${formatCurrency(total)}</p>`;
@@ -635,22 +613,22 @@
         });
         const mCell = document.createElement("td");
         if(data.pagado) {
-          mCell.textContent = formatCurrency(parseInt(data.monto.replace('$',''))) + " ✅";
+          mCell.textContent = formatCurrency(parseInt(data.monto.replace('$','').replace(/\./g, ''))) + " ✅";
           mCell.classList.add("paid-cell");
         } else {
-          mCell.textContent = formatCurrency(parseInt(data.monto.replace('$','')));
+          mCell.textContent = formatCurrency(parseInt(data.monto.replace('$','').replace(/\./g, '')));
         }
         mCell.addEventListener("click", function(e) {
           e.stopPropagation();
           if (!data.pagado) {
             data.pagado = true;
-            mCell.textContent = formatCurrency(parseInt(data.monto.replace('$',''))) + " ✅";
+            mCell.textContent = formatCurrency(parseInt(data.monto.replace('$','').replace(/\./g, ''))) + " ✅";
             mCell.classList.add("paid-cell");
             saveDataToLocalStorageTarjeta();
           } else {
             if (confirm("¿Desea volver a marcar este consumo como no pagado?")) {
               data.pagado = false;
-              mCell.textContent = formatCurrency(parseInt(data.monto.replace('$','')));
+              mCell.textContent = formatCurrency(parseInt(data.monto.replace('$','').replace(/\./g, '')));
               mCell.classList.remove("paid-cell");
               saveDataToLocalStorageTarjeta();
             }
@@ -757,9 +735,10 @@
           alert("Ingrese Concepto y Monto (diferente de 'Tarj. de crédito').");
           return;
         }
+        const montoValue = getMontoValue(m);
         const newData = { 
           concepto: c, 
-          monto: formatCurrency(parseInt(m)), 
+          monto: formatCurrency(montoValue), 
           pagado: false 
         };
         const row = createRowPrincipal(newData);
@@ -777,9 +756,10 @@
           alert("Ingrese al menos Concepto y Monto.");
           return;
         }
+        const montoValue = getMontoValue(m);
         const newData = { 
           concepto: c, 
-          monto: formatCurrency(parseInt(m)), 
+          monto: formatCurrency(montoValue), 
           cuotas: cu, 
           fijo: cu !== "",
           pagado: false
@@ -814,7 +794,6 @@
         });
       };
       
-      // Añade listeners de eliminación por long press y swipe (excepto en fila especial)
       const addRowDeletionListener = (row, saveCallback) => {
         if(row.getAttribute("data-special") === "true") return;
         let timer;
