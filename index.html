@@ -10,6 +10,15 @@
       margin: 10px;
       padding: 0;
     }
+    /* Barra de alerta para respaldo */
+    #backupAlert {
+      background-color: #f8d7da;
+      color: #721c24;
+      padding: 5px 10px;
+      font-size: 0.9em;
+      text-align: left;
+      margin-bottom: 10px;
+    }
     header {
       text-align: center;
       margin-bottom: 10px;
@@ -37,10 +46,10 @@
     .tab-content.active {
       display: block;
     }
-    /* Menú de meses y cierre */
-    .month-selector, .closing-date-container {
-      text-align: center;
-      margin-bottom: 15px;
+    /* Contenedores alineados a la izquierda */
+    .month-selector, .closing-date-container, .storage-section {
+      text-align: left;
+      margin: 0 10px 15px 10px;
     }
     select, input[type="date"] {
       font-size: 1em;
@@ -84,23 +93,25 @@
     .paid-cell {
       background-color: #d4edda !important;
     }
+    /* Formulario en línea y con tamaños reducidos */
     .form-section {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: center;
+      display: inline-flex;
+      gap: 5px;
+      align-items: center;
       margin-bottom: 15px;
     }
     .form-section input {
-      padding: 6px;
-      font-size: 1em;
-      min-width: 100px;
+      width: 100px;
+      padding: 4px;
+      font-size: 0.9em;
     }
     .add-button {
       cursor: pointer;
-      font-size: 1.5em;
+      font-size: 1.2em;
       background: none;
-      border: none;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 4px 8px;
     }
     input.editable-cell {
       width: 100%;
@@ -118,27 +129,20 @@
       text-align: center;
       font-size: 1.1em;
     }
-    .storage-section {
-      text-align: center;
-      margin-bottom: 15px;
-    }
-    .storage-button {
-      cursor: pointer;
-      font-size: 1.5em;
-      background: none;
-      border: none;
-      margin: 0 5px;
-    }
   </style>
 </head>
 <body>
+  <!-- Barra de alerta de respaldo (se mostrará si falta respaldo) -->
+  <div id="backupAlert" style="display: none;">Falta guardar respaldo para este mes!</div>
+  
   <header>
     <h1>Gastos Mensuales</h1>
   </header>
   
   <!-- Pestañas -->
   <div class="tab-nav">
-    <button class="tab-link active" data-tab="principal">😃 Principal</button>
+    <!-- Cambiado a emoji de casa en Principal -->
+    <button class="tab-link active" data-tab="principal">🏠 Principal</button>
     <button class="tab-link" data-tab="tarjeta">💳 Tarjeta de crédito</button>
   </div>
   
@@ -148,7 +152,7 @@
     <select id="monthSelector"></select>
   </div>
   
-  <!-- Campo Fecha de cierre (Tarjeta de crédito) -->
+  <!-- Campo Fecha de cierre para Tarjeta de crédito -->
   <div class="closing-date-container">
     <label for="closingDate">Fecha de cierre: </label>
     <input type="date" id="closingDate">
@@ -173,7 +177,7 @@
     </table>
     <div class="form-section">
       <input type="text" id="conceptInputPrincipal" placeholder="Concepto">
-      <input type="number" id="montoInputPrincipal" placeholder="Monto" step="0.01">
+      <input type="number" id="montoInputPrincipal" placeholder="Monto" step="1" min="0">
       <button id="addRowButtonPrincipal" class="add-button">➕</button>
     </div>
     <div class="summary-box" id="summaryBoxPrincipal">
@@ -199,18 +203,19 @@
     </table>
     <div class="form-section">
       <input type="text" id="conceptInputTarjeta" placeholder="Concepto">
-      <input type="number" id="montoInputTarjeta" placeholder="Monto" step="0.01">
+      <!-- Para montos en Tarjeta se usa step=1 para permitir números grandes -->
+      <input type="number" id="montoInputTarjeta" placeholder="Monto" step="1" min="0">
       <input type="text" id="cuotasInputTarjeta" placeholder="Cuotas (ej. 6)">
       <button id="addRowButtonTarjeta" class="add-button">➕</button>
-      <!-- Botón para traer consumos del mes pasado -->
-      <button id="bringConsumptionsButton" class="add-button">Traer consumos</button>
+      <!-- Botón renombrado y alineado a la izquierda -->
+      <button id="bringConsumptionsButton" class="add-button" style="text-align: left;">📋 Copiar consumos</button>
     </div>
     <div class="summary-box" id="summaryBoxTarjeta">
       <p>Total consumos: 💳 $0</p>
     </div>
   </div>
   
-  <!-- Sección de almacenamiento -->
+  <!-- Sección de almacenamiento (alineada a la izquierda) -->
   <div class="storage-section">
     <button id="exportButton" class="storage-button">💾 Guardar JSON</button>
     <button id="importButton" class="storage-button">📂 Cargar JSON</button>
@@ -232,14 +237,13 @@
       return `${year}-${month}-${day}`;
     }
     
-    // Calcula la fecha de cierre por defecto: se busca el jueves de la última semana del mes seleccionado
+    // Calcula la Fecha de cierre por defecto: se busca el jueves de la última semana del mes seleccionado
     function getDefaultClosingDate(monthKey) {
       const [yearStr, monthStr] = monthKey.split("-");
       const year = Number(yearStr);
       const month = Number(monthStr); // 1-12
-      // Último día del mes: new Date(year, month, 0)
       const lastDay = new Date(year, month, 0);
-      const dayOfWeek = lastDay.getDay(); // 0=Dom, 1=Lun,..., 4=Jue, etc.
+      const dayOfWeek = lastDay.getDay(); // 0=Dom, 1=Lun, ..., 4=Jue, etc.
       let offset;
       if(dayOfWeek <= 4) {
         offset = 4 - dayOfWeek;
@@ -248,6 +252,17 @@
       }
       const closingDate = new Date(lastDay.getTime() + offset * 24 * 3600 * 1000);
       return formatDateForInput(closingDate);
+    }
+    
+    // Función para actualizar la barra de alerta de respaldo
+    function updateBackupAlert(currentKey) {
+      const backupKey = "backup_" + currentKey;
+      const alertDiv = document.getElementById("backupAlert");
+      if (!localStorage.getItem(backupKey)) {
+        alertDiv.style.display = "block";
+      } else {
+        alertDiv.style.display = "none";
+      }
     }
     
     document.addEventListener("DOMContentLoaded", function() {
@@ -278,11 +293,13 @@
       monthSelector.selectedIndex = 0;
       currentMonthNameEl.textContent = monthOptions[0].text;
       closingDateInput.value = getDefaultClosingDate(monthOptions[0].key);
+      updateBackupAlert(monthOptions[0].key);
       
-      // Al cambiar el mes, se actualiza la fecha de cierre por defecto
+      // Al cambiar el mes, actualizar la Fecha de cierre y la alerta de respaldo
       monthSelector.addEventListener("change", function() {
         const newKey = monthSelector.value;
         closingDateInput.value = getDefaultClosingDate(newKey);
+        updateBackupAlert(newKey);
       });
       
       // Función para obtener la clave del mes anterior (formato "YYYY-MM")
@@ -293,7 +310,7 @@
         return `${year}-${("0" + month).slice(-2)}`;
       };
       
-      // Determina en qué mes almacenar el consumo según la fecha actual y la Fecha de cierre
+      // Determina en qué mes almacenar el consumo según la Fecha de cierre
       function getConsumptionMonthKey() {
         const selectedKey = monthSelector.value;
         const closingDate = new Date(closingDateInput.value);
@@ -310,7 +327,7 @@
         }
       }
       
-      // Función para obtener el total de consumos del mes anterior (para resumen en Principal)
+      // Función para obtener el total de consumos del mes anterior (para el resumen en Principal)
       const getTarjetaConsumoFromPreviousMonth = () => {
         const currentKey = monthSelector.value;
         const prevKey = getPreviousMonthKey(currentKey);
@@ -351,14 +368,18 @@
         const currentKey = monthSelector.value;
         const data = [];
         tableBodyPrincipal.querySelectorAll("tr").forEach(row => {
-          if (row.getAttribute("data-special") === "true") return;
-          const cells = row.querySelectorAll("td");
-          if (cells.length >= 3) {
-            data.push({
-              concepto: cells[0].textContent,
-              monto: cells[1].textContent,
-              pagado: cells[2].querySelector(".pay-icon").getAttribute("data-paid") === "true"
-            });
+          // En la pestaña Principal todas las entradas se pueden editar y borrar, excepto la de "Tarj. de crédito"
+          if (row.getAttribute("data-special") === "true") {
+            data.push({ concepto: "Tarj. de crédito", monto: row.children[1].textContent, pagado: row.children[2].querySelector(".pay-icon").getAttribute("data-paid") === "true" });
+          } else {
+            const cells = row.querySelectorAll("td");
+            if (cells.length >= 3) {
+              data.push({
+                concepto: cells[0].textContent,
+                monto: cells[1].textContent,
+                pagado: cells[2].querySelector(".pay-icon").getAttribute("data-paid") === "true"
+              });
+            }
           }
         });
         const prevConsumo = getTarjetaConsumoFromPreviousMonth();
@@ -390,6 +411,7 @@
         const row = document.createElement("tr");
         if (data.concepto === "Tarj. de crédito") {
           row.setAttribute("data-special", "true");
+          // En Principal, la fila de "Tarj. de crédito" NO se puede editar ni borrar
         }
         const cCell = document.createElement("td");
         cCell.textContent = data.concepto;
@@ -409,9 +431,13 @@
         row.appendChild(mCell);
         row.appendChild(pCell);
         
-        addPayIconListener(pay, saveDataToLocalStoragePrincipal);
+        // Para filas editables en Principal, se añaden listeners para editar y borrar.
         if (!row.hasAttribute("data-special")) {
+          addPayIconListener(pay, saveDataToLocalStoragePrincipal);
           addRowListeners(row, saveDataToLocalStoragePrincipal);
+        } else {
+          // Para la fila "Tarj. de crédito" solo se permite cambiar estado de pago.
+          addPayIconListener(pay, saveDataToLocalStoragePrincipal);
         }
         return row;
       };
@@ -450,6 +476,7 @@
         localStorage.setItem("tarjetaCredito", JSON.stringify(all));
       };
       
+      // En la pestaña Tarjeta, las filas NO se pueden editar ni borrar (solo se permite alternar estado de pago o fijo)
       const saveDataToLocalStorageTarjeta = () => {
         const currentKey = monthSelector.value;
         const data = [];
@@ -480,7 +507,7 @@
         summaryBoxTarjeta.innerHTML = `<p>Total consumos: 💳 ${formatCurrency(total)}</p>`;
       };
       
-      // Creamos la fila para Tarjeta de crédito, ahora con control de estado "pagado" en la celda de monto.
+      // Creamos la fila para Tarjeta: las celdas no son editables ni eliminables; solo se puede alternar el estado "pagado" al hacer clic en el monto y alternar "fijo" en el concepto.
       const createRowTarjeta = (data) => {
         const row = document.createElement("tr");
         const cCell = document.createElement("td");
@@ -493,14 +520,13 @@
           saveDataToLocalStorageTarjeta();
         });
         const mCell = document.createElement("td");
-        // Mostrar el monto formateado, y si está pagado se añade el tilde y fondo verde claro
         if(data.pagado) {
           mCell.textContent = formatCurrency(parseInt(data.monto.replace('$',''))) + " ✅";
           mCell.classList.add("paid-cell");
         } else {
           mCell.textContent = formatCurrency(parseInt(data.monto.replace('$','')));
         }
-        // Al hacer clic en el recuadro de monto, alterna el estado de "pagado"
+        // Al hacer clic en el recuadro de monto se alterna el estado de "pagado"
         mCell.addEventListener("click", function(e) {
           e.stopPropagation();
           if (!data.pagado) {
@@ -517,18 +543,13 @@
             }
           }
         });
-        
         const cuotasCell = document.createElement("td");
         cuotasCell.textContent = data.cuotas || "";
         
         row.appendChild(cCell);
         row.appendChild(mCell);
         row.appendChild(cuotasCell);
-        
-        addEditableListener(cCell, saveDataToLocalStorageTarjeta);
-        addEditableListener(mCell, saveDataToLocalStorageTarjeta);
-        addEditableListener(cuotasCell, saveDataToLocalStorageTarjeta);
-        addRowDeletionListener(row, saveDataToLocalStorageTarjeta);
+        // En Tarjeta no se permite editar o borrar la fila
         return row;
       };
       
@@ -552,7 +573,7 @@
         tarjetaTitle.textContent = `Consumos del mes de ${selected.textContent}`;
       };
       
-      // Botón "Traer consumos" en Tarjeta de crédito: trae consumos fijos del mes anterior y actualiza cuotas
+      // Botón "Copiar consumos" en Tarjeta: trae consumos fijos del mes anterior y actualiza cuotas
       document.getElementById("bringConsumptionsButton").addEventListener("click", function() {
         const currentKey = monthSelector.value;
         const prevKey = getPreviousMonthKey(currentKey);
@@ -560,8 +581,8 @@
         const prevData = allTarjeta[prevKey] || [];
         let consumosAFiltrar = prevData.filter(item => item.fijo === true);
         // Para cada consumo:
-        // - Si cuotas es solo un número (estado inicial), lo convierte a "1/C"
-        // - Si ya está en "N/C", incrementa N si N < C; si se completa, lo descarta
+        // - Si cuotas es solo un número (estado inicial), se convierte a "1/C"
+        // - Si ya está en "N/C", incrementa N si N < C; si se completa, se descarta
         consumosAFiltrar = consumosAFiltrar.map(item => {
           if (item.cuotas) {
             if (item.cuotas.includes("/")) {
@@ -598,7 +619,9 @@
         loadDataFromLocalStorageTarjeta();
       });
       
-      // Al cambiar de mes: se actualizan las vistas según la data almacenada
+      // Al cambiar de mes:
+      // En Principal se copian todos los datos (reiniciando el estado de pago) y se actualiza la entrada fija "Tarj. de crédito".
+      // En Tarjeta se mantiene la data que ya esté en el localStorage para el mes actual.
       monthSelector.addEventListener("change", function() {
         const newKey = monthSelector.value;
         const allPrincipal = getAllDataPrincipal();
@@ -619,9 +642,10 @@
         updateTarjetaTitle();
         loadDataFromLocalStoragePrincipal();
         loadDataFromLocalStorageTarjeta();
+        updateBackupAlert(newKey);
       });
       
-      // Botón para agregar consumo en Principal
+      // Botón para agregar consumo en Principal (se puede editar y borrar)
       document.getElementById("addRowButtonPrincipal").addEventListener("click", function() {
         const c = document.getElementById("conceptInputPrincipal").value.trim();
         const m = document.getElementById("montoInputPrincipal").value.trim();
@@ -641,7 +665,7 @@
         saveDataToLocalStoragePrincipal();
       });
       
-      // Botón para agregar consumo en Tarjeta de crédito
+      // Botón para agregar consumo en Tarjeta de crédito (no se puede editar ni borrar, solo se marca "pagado")
       document.getElementById("addRowButtonTarjeta").addEventListener("click", function() {
         const c = document.getElementById("conceptInputTarjeta").value.trim();
         const m = document.getElementById("montoInputTarjeta").value.trim();
@@ -650,7 +674,6 @@
           alert("Ingrese al menos Concepto y Monto.");
           return;
         }
-        // Si se ingresa un valor en cuotas, se marca automáticamente como "fijo"
         const newData = { 
           concepto: c, 
           monto: formatCurrency(parseInt(m)), 
@@ -671,7 +694,7 @@
         document.getElementById("cuotasInputTarjeta").value = "";
       });
       
-      // Funciones para edición y borrado
+      // Funciones para edición y borrado en Principal (Tarjeta no se permite editar ni borrar)
       const addPayIconListener = (icon, saveCallback) => {
         icon.addEventListener("click", function(e) {
           e.stopPropagation();
@@ -753,6 +776,10 @@
         a.download = "gastosMensuales.json";
         a.click();
         URL.revokeObjectURL(url);
+        // Al exportar, se marca respaldo para el mes actual
+        const currentKey = monthSelector.value;
+        localStorage.setItem("backup_" + currentKey, "true");
+        updateBackupAlert(currentKey);
       });
       
       document.getElementById("importButton").addEventListener("click", () => { 
